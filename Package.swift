@@ -1,31 +1,21 @@
 // swift-tools-version: 5.6
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
 import PackageDescription
 
 let package = Package(
-    name: "SwiftMarpa",
+    name: "Marpa",
     products: [
-        .library(
-            name: "SwiftMarpa",
-            targets: ["SwiftMarpa"]
-        ),
+      .library(name: "Marpa", targets: ["Marpa"]),
     ],
     targets: [
-        .target(
-            name: "SwiftMarpa",
-            dependencies: ["libmarpa"]),
-        .testTarget(
-            name: "SwiftMarpaTests",
-            dependencies: ["SwiftMarpa", "libmarpa"]
-        ),
-        .systemLibrary(
-          name: "libmarpa",
-          pkgConfig: "libmarpa",
-          providers: [
-            .apt(["libmarpa-r2-perl"]),
-            .brew(["libmarpa"])
-          ]
-        )
-    ]
-)
+      .target(name: "Marpa", dependencies: ["libmarpa"]),
+      .testTarget(
+        name: "MarpaTests", dependencies: ["Marpa", "libmarpa"]),
+      .systemLibrary(
+        name: "libmarpa", pkgConfig: "libmarpa",
+        // These provide hints for users about what to install.
+        providers: [
+          .apt(["libmarpa-r2-perl"]),
+          .brew(["libmarpa"]),
+          .yum(["perl-Marpa-XS"])
+        ])
+    ])

@@ -1,4 +1,4 @@
 module libmarpa [system] {
-  umbrella header "/opt/homebrew/include/marpa.h"
+  umbrella header "shim.h"
   link "marpa"
 }

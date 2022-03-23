@@ -17,9 +17,11 @@ let package = Package(
             dependencies: ["libmarpa"]),
         .testTarget(
             name: "SwiftMarpaTests",
-            dependencies: ["SwiftMarpa", "libmarpa"]),
+            dependencies: ["SwiftMarpa", "libmarpa"]
+        ),
         .systemLibrary(
           name: "libmarpa",
+          pkgConfig: "libmarpa",
           providers: [
             .apt(["libmarpa-r2-perl"]),
             .brew(["libmarpa"])

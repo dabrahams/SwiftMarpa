@@ -100,10 +100,10 @@ extension Grammar {
     }
   }
 
-  /// Returns the number of symbols in `self`.
+  /// The number of symbols in `self`.
   ///
-  /// Symbol IDs are in `0..<countSymbols`.
-  public var countSymbols: Int {
+  /// Symbol IDs are in `0..<symbolCount`.
+  public var symbolCount: Int {
     Int(stdOpt(marpa_g_highest_symbol_id(g)) ?? 0) + 1
   }
 
@@ -141,10 +141,10 @@ extension Grammar {
     public var rawID: Marpa_Rule_ID { .init(truncatingIfNeeded: id) }
   }
 
-  /// Returns the number of rules in `self`.
+  /// The number of rules in `self`.
   ///
-  /// Rule IDs are in `0..<countRules`.
-  public var countRules: Int {
+  /// Rule IDs are in `0..<ruleCount`.
+  public var ruleCount: Int {
     Int(stdOpt(marpa_g_highest_rule_id(g)) ?? 0) + 1
   }
 
@@ -205,36 +205,271 @@ extension Grammar {
       self.std(marpa_g_rule_rhs(self.g, r.rawID, Int32($0)))
     }
   }
+}
 
-  /// Returns `true` iff `r`'s proper separation flag is set.
-  ///
-  /// See https://github.com/jeffreykegler/libmarpa/issues/76.
+/// Sequence rules
+extension Grammar {
+  /// Returns `true` iff `r` is a sequence rule that doesn't recognize a
+  /// trailing separator.
   public func isProperSeparation(_ r: Rule) -> Bool {
     std(marpa_g_rule_is_proper_separation(g, r.rawID)) != 0
   }
+
+  /// Returns the minimum number of sequence repetitions recognized by `r`, or
+  /// `nil` if `r` is not a sequence rule.
+  public func sequenceMinRepetitions(_ r: Rule) -> Int? {
+    stdOpt(marpa_g_sequence_min(g, r.rawID)).map { Int($0) }
+  }
+
+  /// Returns a new rule in `self`, reducing sequences of `rhs` (separated by
+  /// `separator` if non-`nil`), to `lhs`.
+  ///
+  /// - Precondition: `lhs` is not the LHS symbol of any other rule.
+  /// - Precondition: `rhs` is not a nullable symbol.
+  /// - Parameter nullable: `true` iff the empty sequence is recognized.
+  /// - Parameter trailingSeparatorAllowed: `true` if an optional final instance
+  ///   of the separator is recognized.
+  ///
+  /// - Note: sequence rules can always be represented by (often less-efficient)
+  ///   equivalent combinations of non-sequence rules.
+  public func makeSequenceRule(
+    lhs: Nonterminal, rhs: Symbol.ID, nullable: Bool,
+    separator: Symbol.ID? = nil, trailingSeparatorAllowed: Bool = false
+  ) -> Rule {
+    Rule(
+      id: std(
+        marpa_g_sequence_new(
+          g, lhs.rawID, Marpa_Symbol_ID(truncatingIfNeeded: rhs),
+          separator.map { Marpa_Symbol_ID(truncatingIfNeeded: $0) } ?? -1,
+          nullable ? 0 : 1,
+          trailingSeparatorAllowed ? MARPA_PROPER_SEPARATION : 0)))
+  }
+
+  /// Returns the separator of the sequence rule `r`, or `nil` if `r` has no
+  /// separator.
+  ///
+  /// - Precondition: `r` is a sequence rule
+  public func sequenceSeparator(_ r: Rule) -> Symbol.ID? {
+    stdOpt(marpa_g_sequence_separator(g, r.rawID))
+  }
+
+  /// Returns `true` iff `s` participates in the RHS of a sequence rule, either
+  /// as the primary RHS symbol or as a separator.
+  public func isCountedInSequence<S: Symbol>(_ s: S) -> Bool {
+    std(marpa_g_symbol_is_counted(g, s.rawID)) != 0
+  }
 }
+
+/// Ranks
+extension Grammar.Rule {
+  public typealias Rank = Marpa_Rank
+}
+
+/// Ranks
+extension Grammar {
+
+  /// A writable mapping from a `Rule` to its rank.
+  public struct RankMap {
+    let g: Grammar
+
+    /// Accesses the ranking of `r`.
+    public subscript(r: Rule) -> Int32 {
+      get {
+        let r = marpa_g_rule_rank(g.g, r.rawID)
+        return r != -2 ? r : g.hidden(r)
+      }
+      nonmutating set {
+        if marpa_g_rule_rank_set(g.g, r.rawID, newValue) == -2 {
+          g.checkCode(g.err)
+        }
+      }
+    }
+  }
+
+  /// The ranking of each rule.
+  var rank: RankMap { .init(g: self) }
+
+  /// A writable mapping from a `Rule` to its “ranks high” flag.
+  public struct RanksHighMap {
+    let g: Grammar
+
+    /// Accesses the “ranks high” flag of `r`.
+    public subscript(r: Rule) -> Bool {
+      get {
+        g.std(marpa_g_rule_null_high(g.g, r.rawID)) != 0
+      }
+      nonmutating set {
+        _ = g.std(marpa_g_rule_null_high_set(g.g, r.rawID, newValue ? 1 : 0))
+      }
+    }
+  }
+  
+  /// The “null ranks high” flag of each rule.
+  var nullRanksHigh: RanksHighMap { .init(g: self) }
+
   /*
-int sequence_min ( Marpa_Rule_ID rule_id);
-Marpa_Rule_ID sequence_new ( Marpa_Symbol_ID lhs_id, Marpa_Symbol_ID rhs_id, Marpa_Symbol_ID separator_id, int min, int flags );
-int sequence_separator ( Marpa_Rule_ID rule_id);
-int symbol_is_counted ( Marpa_Symbol_ID sym_id);
-Marpa_Rank rule_rank_set ( Marpa_Rule_ID rule_id, Marpa_Rank rank);
-Marpa_Rank rule_rank ( Marpa_Rule_ID rule_id);
-int rule_null_high_set ( Marpa_Rule_ID rule_id, int flag);
-int rule_null_high ( Marpa_Rule_ID rule_id);
-int completion_symbol_activate ( Marpa_Symbol_ID sym_id, int reactivate );
-int nulled_symbol_activate ( Marpa_Symbol_ID sym_id, int reactivate );
-int prediction_symbol_activate ( Marpa_Symbol_ID sym_id, int reactivate );
-int symbol_is_completion_event ( Marpa_Symbol_ID sym_id);
-int symbol_is_completion_event_set ( Marpa_Symbol_ID sym_id, int value);
-int symbol_is_nulled_event ( Marpa_Symbol_ID sym_id);
-int symbol_is_nulled_event_set ( Marpa_Symbol_ID sym_id, int value);
-int symbol_is_prediction_event ( Marpa_Symbol_ID sym_id);
-int symbol_is_prediction_event_set ( Marpa_Symbol_ID sym_id, int value);
-int precompute ();
-int is_precomputed ();
-int has_cycle ();
-  */
+  /// Sets the rank of `r` to `newRank`.
+  public func setRank(of r: Rule, to newRank: Rule.Rank) {
+    if marpa_g_rule_rank_set(g, r.rawID, newRank) == -2 {
+      checkCode(err)
+    }
+  }
+  
+  /// Returns the rank of `r`.
+  public func rank(of r: Rule) -> Rule.Rank {
+    let r = marpa_g_rule_rank(g, r.rawID)
+    return r != -2 ? r : hidden(r)
+  }
+
+  /// Sets the “null ranks high” attribute of `r` to `newRanksHigh`.
+  public func setNullRanksHigh(of r: Rule, to newRanksHigh: Bool) {
+    _ = std(marpa_g_rule_null_high_set(g, r.rawID, newRanksHigh ? 1 : 0))
+  }
+  
+  /// Returns the “null ranks high” attribute of `r`.
+  public func getNullRanksHigh(of r: Rule) -> Bool {
+    std(marpa_g_rule_null_high(g, r.rawID)) != 0
+  }
+   */
+}
+
+/// Completion Events
+extension Grammar {
+  /// Enables the completion event trigger for `s`.
+  ///
+  /// - Precondition: `canTriggerCompletionEvent[s]``
+  public func enableCompletionEvent<S: Symbol>(s: S) {
+    _ = std(marpa_g_completion_symbol_activate(g, s.rawID, 1))
+  }
+  
+  /// Disables the completion event trigger for `s`.
+  ///
+  /// - Precondition: `canTriggerCompletionEvent[s]``
+  public func disableCompletionEvent<S: Symbol>(s: S) {
+    _ = std(marpa_g_completion_symbol_activate(g, s.rawID, 0))
+  }
+
+  /// A writable mapping from a `Symbol` to whether a completion event can be
+  /// triggered for it.
+  public struct CompletionTriggerMap {
+    let g: Grammar
+
+    /// Accesses the “has completion event” flag of `s`.
+    ///
+    /// - Precondition(set): `!self.isPrecomputed`
+    public subscript<S: Symbol>(s: S) -> Bool {
+      get {
+        g.std(marpa_g_symbol_is_completion_event(g.g, s.rawID)) != 0
+      }
+      nonmutating set {
+        _ = g.std(
+          marpa_g_symbol_is_completion_event_set(g.g, s.rawID, newValue ? 1 : 0))
+      }
+    }
+  }
+
+  /// The completion event trigger capability of each Symbol.
+  public var canTriggerCompletionEvent: CompletionTriggerMap { .init(g: self) }
+}
+
+/// Nulled Events
+extension Grammar {
+  /// Enables the nulled event trigger for `s`.
+  ///
+  /// - Precondition: `canTriggerNulledEvent[s]``
+  public func enableNulledEvent<S: Symbol>(s: S) {
+    _ = std(marpa_g_nulled_symbol_activate(g, s.rawID, 1))
+  }
+  
+  /// Disables the nulled event trigger for `s`.
+  ///
+  /// - Precondition: `canTriggerNulledEvent[s]``
+  public func disableNulledEvent<S: Symbol>(s: S) {
+    _ = std(marpa_g_nulled_symbol_activate(g, s.rawID, 0))
+  }
+
+  /// A writable mapping from a `Symbol` to whether a nulled event can be
+  /// triggered for it.
+  public struct NulledTriggerMap {
+    let g: Grammar
+
+    /// Accesses the “has nulled event” flag of `s`.
+    ///
+    /// - Precondition(set): `!self.isPrecomputed`
+    public subscript<S: Symbol>(s: S) -> Bool {
+      get {
+        g.std(marpa_g_symbol_is_nulled_event(g.g, s.rawID)) != 0
+      }
+      nonmutating set {
+        _ = g.std(
+          marpa_g_symbol_is_nulled_event_set(g.g, s.rawID, newValue ? 1 : 0))
+      }
+    }
+  }
+
+  /// The nulled event trigger capability of each Symbol.
+  public var canTriggerNulledEvent: NulledTriggerMap { .init(g: self) }
+}
+
+/// Prediction Events
+extension Grammar {
+  /// Enables the prediction event trigger for `s`.
+  ///
+  /// - Precondition: `canTriggerPredictionEvent[s]``
+  public func enablePredictionEvent<S: Symbol>(s: S) {
+    _ = std(marpa_g_prediction_symbol_activate(g, s.rawID, 1))
+  }
+  
+  /// Disables the prediction event trigger for `s`.
+  ///
+  /// - Precondition: `canTriggerPredictionEvent[s]``
+  public func disablePredictionEvent<S: Symbol>(s: S) {
+    _ = std(marpa_g_prediction_symbol_activate(g, s.rawID, 0))
+  }
+
+  /// A writable mapping from a `Symbol` to whether a prediction event can be
+  /// triggered for it.
+  public struct PredictionTriggerMap {
+    let g: Grammar
+
+    /// Accesses the “has prediction event” flag of `s`.
+    ///
+    /// - Precondition(set): `!self.isPrecomputed`
+    public subscript<S: Symbol>(s: S) -> Bool {
+      get {
+        g.std(marpa_g_symbol_is_prediction_event(g.g, s.rawID)) != 0
+      }
+      nonmutating set {
+        _ = g.std(
+          marpa_g_symbol_is_prediction_event_set(g.g, s.rawID, newValue ? 1 : 0))
+      }
+    }
+  }
+
+  /// The prediction event trigger capability of each Symbol.
+  public var canTriggerPredictionEvent: PredictionTriggerMap { .init(g: self) }
+}
+
+exntension Grammar {
+  /// Perform the step necessary to create a recognizer from the grammar.
+  public func precompute() {
+    _ = std(marpa_g_precompute(g))
+  }
+
+  /// `true` iff `precompute()` has been called.
+  var isPrecomputed: Bool {
+    std(marpa_g_is_precomputed(g)) != 0
+  }
+
+  /// `true` iff `self` has a cycle.
+  ///
+  /// Most applications will want to treat a `true` value as a fatal error. To
+  /// determine which rules are in the cycle, `isLoop` can be called for each
+  /// rule in turn.
+  var hasCycle: Bool {
+    std(marpa_g_has_cycle(g)) != 0
+  }
+}
 
 /*
 extern const int marpa_major_version;

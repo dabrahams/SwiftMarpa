@@ -20,6 +20,11 @@ public final class Grammar {
   }
 }
 
+func fatal(_ x: Int32) -> Never {
+  fatalError("Marpa error: \(errorDescription[x]!)")
+}
+  
+
 /// Result handling
 extension Grammar {
   var err: Int32 { marpa_g_error(g, nil) }
@@ -38,10 +43,6 @@ extension Grammar {
     x == -1 ? nil : std(x)
   }
 
-  func fatal(_ x: Int32) -> Never {
-    fatalError("Marpa error: \(errorDescription[x]!)")
-  }
-  
   func checkCode(_ x: Int32) {
     if x != MARPA_ERR_NONE { fatal(x) }
   }
@@ -450,7 +451,7 @@ extension Grammar {
   public var canTriggerPredictionEvent: PredictionTriggerMap { .init(g: self) }
 }
 
-exntension Grammar {
+extension Grammar {
   /// Perform the step necessary to create a recognizer from the grammar.
   public func precompute() {
     _ = std(marpa_g_precompute(g))
@@ -471,70 +472,159 @@ exntension Grammar {
   }
 }
 
+class Recognizer {
+  let g: Grammar;
+  let r: Marpa_Recognizer;
+
+  func std(_ i: Int32) -> Int32 {
+    if i < 0 { fatal(i) }
+    return i
+  }
+  
+  public init(_ g: Grammar) {
+    self.g = g
+    r = marpa_r_new(g.g)
+  }
+
+  deinit {
+    marpa_r_unref(r)
+  }
+
+  // Makes `self` ready to accept input.
+  //
+  // The first Earley set, the one at earleme 0, will be completed during this
+  // call, so events may be generated. For details, see the documentation of
+  // `closeCurrentEarleme`.
+  func startInput() {
+    _ = std(marpa_r_start_input(r))
+  }
+
+  // Reads an input symbol `s` starting at the current earleme, returning a
+  // non-nil Marpa error code if the token is not recognized.
+  //
+  // - Parameter lengthInEarlemes: the number of earlemes spanned by `s` .
+  // - Parameter value: a value passed through to the evaluator.
+  //
+  // - Precondition: `value != 0`
+  func read(
+    _ s: Grammar.Nonterminal, lengthInEarlemes: Int32 = 1, value: Int32 = 1
+  ) -> Int32? {
+    let err = marpa_r_alternative(r, s.rawID, value, lengthInEarlemes)
+    if err == MARPA_ERR_UNEXPECTED_TOKEN_ID
+         || err == MARPA_ERR_DUPLICATE_TOKEN
+         || err == MARPA_ERR_NO_TOKEN_EXPECTED_HERE
+         || err == MARPA_ERR_INACCESSIBLE_TOKEN { return err }
+    if err != MARPA_ERR_NONE { _ = std(err) }
+    return nil
+  }
+
+  // Advances the current earleme by 1, returning the number of events
+  // generated.
+  //
+  // During this method, one or more events may occur. On success, this function
+  // returns the number of events generated, but it is important to note that
+  // events may be created whether earleme completion fails or succeeds. When
+  // this method fails, the application must call marpa_g_event() if it wants to
+  // determine if any events occurred. Since the reason for failure to complete
+  // an earleme is often detailed in the events, applications that fail will
+  // often be at least as interested in the events as those that succeed.
+  // 
+  // The MARPA_EVENT_EARLEY_ITEM_THRESHOLD event indicates that an
+  // application-settable threshold on the number of Earley items has been reached
+  // or exceeded. What this means depends on the application, but when the default
+  // threshold is exceeded, it means that it is very likely that the time and
+  // space resources consumed by the parse will prove excessive.
+  // 
+  // A parse is “exhausted” when it can accept no more input. This can happen both
+  // on success and on failure. Note that the failure due to parse exhaustion only
+  // means failure at the current earleme. There may be successful parses at
+  // earlier earlemes.
+  // 
+  // If a parse is exhausted, but successful, an event with the event code
+  // MARPA_EVENT_EXHAUSTED occurs. Because the parse is exhausted, no input will
+  // be accepted at later earlemes. It is quite common for a parse to become
+  // exhausted when it succeeds. Many practical grammars are designed so that a
+  // successful parse cannot be extended.
+  // 
+  // An exhausted parse may cause a failure, in which case
+  // marpa_r_earleme_complete() returns an error whose error code is
+  // MARPA_ERR_PARSE_EXHAUSTED. For a parse to fail at an earleme due to
+  // exhaustion, it must be the case that no alternatives were accepted at that
+  // earleme. In fact, in the standard input model, a failure due to parse
+  // exhaustion occurs if and only if no alternatives were accepted at the current
+  // earleme.
+  // 
+  // The circumstances under which failure due to parse exhaustion occurs are
+  // slightly more complicated when variable length tokens are in use. Informally,
+  // a parse will never fail due to exhaustion as long as it is possible that a
+  // token ending at some future earleme will continue the parse. More precisely,
+  // a call to marpa_r_earleme_complete() fails due to parse exhaustion if and
+  // only if, first, no alternatives were added at the current earleme and,
+  // second, that call left the current earleme equal to the furthest earleme.
+  @discardableResult
+  func advanceEarleme() -> Int {
+    Int(std(marpa_r_earleme_complete(r)))
+  }
+}
+
 /*
-extern const int marpa_major_version;
-extern const int marpa_minor_version;
-extern const int marpa_micro_version;
+Marpa_Recognizer marpa_r_new ( Marpa_Grammar g );
+Marpa_Recognizer marpa_r_ref (Marpa_Recognizer r);
+void marpa_r_unref (Marpa_Recognizer r);
+int marpa_r_start_input (Marpa_Recognizer r);
+int marpa_r_alternative (Marpa_Recognizer r, Marpa_Symbol_ID token_id, int value, int length);
+int marpa_r_earleme_complete (Marpa_Recognizer r);
+Marpa_Earleme marpa_r_current_earleme (Marpa_Recognizer r);
+Marpa_Earleme marpa_r_earleme ( Marpa_Recognizer r, Marpa_Earley_Set_ID set_id);
+int marpa_r_earley_set_value ( Marpa_Recognizer r, Marpa_Earley_Set_ID earley_set);
+int marpa_r_earley_set_values ( Marpa_Recognizer r, Marpa_Earley_Set_ID earley_set, int* p_value, void** p_pvalue );
+unsigned int marpa_r_furthest_earleme (Marpa_Recognizer r);
+Marpa_Earley_Set_ID marpa_r_latest_earley_set (Marpa_Recognizer r);
+int marpa_r_latest_earley_set_value_set ( Marpa_Recognizer r, int value);
+int marpa_r_latest_earley_set_values_set ( Marpa_Recognizer r, int value, void* pvalue);
+int marpa_r_completion_symbol_activate ( Marpa_Recognizer r, Marpa_Symbol_ID sym_id, int reactivate );
+int marpa_r_earley_item_warning_threshold_set (Marpa_Recognizer r, int threshold);
+int marpa_r_earley_item_warning_threshold (Marpa_Recognizer r);
+int marpa_r_expected_symbol_event_set ( Marpa_Recognizer r, Marpa_Symbol_ID symbol_id, int value);
+int marpa_r_is_exhausted (Marpa_Recognizer r);
+int marpa_r_nulled_symbol_activate ( Marpa_Recognizer r, Marpa_Symbol_ID sym_id, int boolean );
+int marpa_r_prediction_symbol_activate ( Marpa_Recognizer r, Marpa_Symbol_ID sym_id, int boolean );
+int marpa_r_terminals_expected ( Marpa_Recognizer r, Marpa_Symbol_ID* buffer);
+int marpa_r_terminal_is_expected ( Marpa_Recognizer r, Marpa_Symbol_ID symbol_id);
+int marpa_r_progress_report_reset ( Marpa_Recognizer r);
+int marpa_r_progress_report_start ( Marpa_Recognizer r, Marpa_Earley_Set_ID set_id);
+int marpa_r_progress_report_finish ( Marpa_Recognizer r );
+Marpa_Rule_ID marpa_r_progress_item ( Marpa_Recognizer r, int* position, Marpa_Earley_Set_ID* origin );
+int marpa_r_zwa_default ( Marpa_Recognizer r, Marpa_Assertion_ID zwaid);
+int marpa_r_zwa_default_set ( Marpa_Recognizer r, Marpa_Assertion_ID zwaid, int default_value);
+Marpa_Earleme marpa_r_clean ( Marpa_Recognizer r);
+int _marpa_r_is_use_leo (Marpa_Recognizer r);
+int _marpa_r_is_use_leo_set ( Marpa_Recognizer r, int value);
+Marpa_Earley_Set_ID _marpa_r_trace_earley_set (Marpa_Recognizer r);
+int _marpa_r_earley_set_size (Marpa_Recognizer r, Marpa_Earley_Set_ID set_id);
+Marpa_Earleme _marpa_r_earley_set_trace (Marpa_Recognizer r, Marpa_Earley_Set_ID set_id);
+Marpa_AHM_ID _marpa_r_earley_item_trace (Marpa_Recognizer r, Marpa_Earley_Item_ID item_id);
+Marpa_Earley_Set_ID _marpa_r_earley_item_origin (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_leo_predecessor_symbol (Marpa_Recognizer r);
+Marpa_Earley_Set_ID _marpa_r_leo_base_origin (Marpa_Recognizer r);
+Marpa_AHM_ID _marpa_r_leo_base_state (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_postdot_symbol_trace (Marpa_Recognizer r, Marpa_Symbol_ID symid);
+Marpa_Symbol_ID _marpa_r_first_postdot_item_trace (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_next_postdot_item_trace (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_postdot_item_symbol (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_first_token_link_trace (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_next_token_link_trace (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_first_completion_link_trace (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_next_completion_link_trace (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_first_leo_link_trace (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_next_leo_link_trace (Marpa_Recognizer r);
+Marpa_AHM_ID _marpa_r_source_predecessor_state (Marpa_Recognizer r);
+Marpa_Symbol_ID _marpa_r_source_token (Marpa_Recognizer r, int *value_p);
+Marpa_Symbol_ID _marpa_r_source_leo_transition_symbol (Marpa_Recognizer r);
+Marpa_Earley_Set_ID _marpa_r_source_middle (Marpa_Recognizer r);
 
-extern void*(*const marpa__out_of_memory)(void);
-extern int marpa__default_debug_handler(const char*format,...);
-extern int(*marpa__debug_handler)(const char*,...);
 
-int _marpa_g_irl_is_chaf(
-_marpa_r_look_yim(Marpa_Recognizer r,Marpa_Earley_Item_Look*look,
-_marpa_r_yim_check(Marpa_Recognizer r,
-_marpa_r_look_pim_eim_first(Marpa_Recognizer r,Marpa_Postdot_Item_Look*look,
-_marpa_r_look_pim_eim_next(Marpa_Postdot_Item_Look*look);
-Marpa_Error_Code marpa_check_version (int required_major, int required_minor, int required_micro );
-Marpa_Error_Code marpa_version (int* version);
-int marpa_c_init ( Marpa_Config* config);
-Marpa_Error_Code marpa_c_error ( Marpa_Config* config, const char** p_error_string );
-Marpa_Grammar marpa_g_new ( Marpa_Config* configuration );
-int marpa_g_force_valued ( Marpa_Grammar g );
-Marpa_Grammar marpa_g_ref (Marpa_Grammar g);
-void marpa_g_unref (Marpa_Grammar g);
-Marpa_Symbol_ID marpa_g_start_symbol (Marpa_Grammar g);
-Marpa_Symbol_ID marpa_g_start_symbol_set ( Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_highest_symbol_id (Marpa_Grammar g);
-int marpa_g_symbol_is_accessible (Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_symbol_is_nullable ( Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_symbol_is_nulling (Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_symbol_is_productive (Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_symbol_is_start ( Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_symbol_is_terminal_set ( Marpa_Grammar g, Marpa_Symbol_ID sym_id, int value);
-int marpa_g_symbol_is_terminal ( Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-Marpa_Symbol_ID marpa_g_symbol_new (Marpa_Grammar g);
-int marpa_g_highest_rule_id (Marpa_Grammar g);
-int marpa_g_rule_is_accessible (Marpa_Grammar g, Marpa_Rule_ID rule_id);
-int marpa_g_rule_is_nullable ( Marpa_Grammar g, Marpa_Rule_ID ruleid);
-int marpa_g_rule_is_nulling (Marpa_Grammar g, Marpa_Rule_ID ruleid);
-int marpa_g_rule_is_loop (Marpa_Grammar g, Marpa_Rule_ID rule_id);
-int marpa_g_rule_is_productive (Marpa_Grammar g, Marpa_Rule_ID rule_id);
-int marpa_g_rule_length ( Marpa_Grammar g, Marpa_Rule_ID rule_id);
-Marpa_Symbol_ID marpa_g_rule_lhs ( Marpa_Grammar g, Marpa_Rule_ID rule_id);
-Marpa_Rule_ID marpa_g_rule_new (Marpa_Grammar g, Marpa_Symbol_ID lhs_id, Marpa_Symbol_ID *rhs_ids, int length);
-Marpa_Symbol_ID marpa_g_rule_rhs ( Marpa_Grammar g, Marpa_Rule_ID rule_id, int ix);
-int marpa_g_rule_is_proper_separation ( Marpa_Grammar g, Marpa_Rule_ID rule_id);
-int marpa_g_sequence_min ( Marpa_Grammar g, Marpa_Rule_ID rule_id);
-Marpa_Rule_ID marpa_g_sequence_new (Marpa_Grammar g, Marpa_Symbol_ID lhs_id, Marpa_Symbol_ID rhs_id, Marpa_Symbol_ID separator_id, int min, int flags );
-int marpa_g_sequence_separator ( Marpa_Grammar g, Marpa_Rule_ID rule_id);
-int marpa_g_symbol_is_counted (Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-Marpa_Rank marpa_g_rule_rank_set ( Marpa_Grammar g, Marpa_Rule_ID rule_id, Marpa_Rank rank);
-Marpa_Rank marpa_g_rule_rank ( Marpa_Grammar g, Marpa_Rule_ID rule_id);
-int marpa_g_rule_null_high_set ( Marpa_Grammar g, Marpa_Rule_ID rule_id, int flag);
-int marpa_g_rule_null_high ( Marpa_Grammar g, Marpa_Rule_ID rule_id);
-int marpa_g_completion_symbol_activate ( Marpa_Grammar g, Marpa_Symbol_ID sym_id, int reactivate );
-int marpa_g_nulled_symbol_activate ( Marpa_Grammar g, Marpa_Symbol_ID sym_id, int reactivate );
-int marpa_g_prediction_symbol_activate ( Marpa_Grammar g, Marpa_Symbol_ID sym_id, int reactivate );
-int marpa_g_symbol_is_completion_event ( Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_symbol_is_completion_event_set ( Marpa_Grammar g, Marpa_Symbol_ID sym_id, int value);
-int marpa_g_symbol_is_nulled_event ( Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_symbol_is_nulled_event_set ( Marpa_Grammar g, Marpa_Symbol_ID sym_id, int value);
-int marpa_g_symbol_is_prediction_event ( Marpa_Grammar g, Marpa_Symbol_ID sym_id);
-int marpa_g_symbol_is_prediction_event_set ( Marpa_Grammar g, Marpa_Symbol_ID sym_id, int value);
-int marpa_g_precompute (Marpa_Grammar g);
-int marpa_g_is_precomputed (Marpa_Grammar g);
-int marpa_g_has_cycle (Marpa_Grammar g);
+ 
 Marpa_Recognizer marpa_r_new ( Marpa_Grammar g );
 Marpa_Recognizer marpa_r_ref (Marpa_Recognizer r);
 void marpa_r_unref (Marpa_Recognizer r);

@@ -23,7 +23,6 @@ public final class Grammar {
 func fatal(_ x: Int32) -> Never {
   fatalError("Marpa error: \(errorDescription[x]!)")
 }
-  
 
 /// Result handling
 extension Grammar {
@@ -53,24 +52,16 @@ extension Grammar {
   }
 }
 
-public protocol Symbol: Hashable {
-  typealias ID = UInt32
-  var id: ID { get }
-}
-
-extension Symbol {
+public struct Symbol: Hashable {
+  public typealias ID = UInt32
+  let id: ID
   var rawID: Marpa_Symbol_ID { .init(truncatingIfNeeded: id) }
 }
 
 /// Symbols
 extension Grammar {
-  public struct Terminal: Symbol {
-    public let id: ID
-  }
-  
-  public struct Nonterminal: Symbol {
-    public let id: ID
-  }
+  public typealias Terminal = Symbol
+  public typealias Nonterminal = Symbol
 
   /// Returns a new symbol ID in this grammar.
   func makeSymbolID(isTerminal: Bool) -> Symbol.ID {
@@ -110,23 +101,23 @@ extension Grammar {
 
   /// Returns `true` iff `s` can participate in a complete parse of the start
   /// symbol.
-  public func isAccessible<S: Symbol>(_ s: S) -> Bool {
+  public func isAccessible(_ s: Symbol) -> Bool {
     std(marpa_g_symbol_is_accessible(g, s.rawID)) != 0
   }
 
   /// Returns `true` iff `s` can be recognized from an empty sequence of tokens.
-  public func isNullable<S: Symbol>(_ s: S) -> Bool {
+  public func isNullable(_ s: Symbol) -> Bool {
     std(marpa_g_symbol_is_nullable(g, s.rawID)) != 0
   }
 
   /// Returns `true` iff `s` can be recognized only from an empty sequence of
   /// tokens.
-  public func isNulling<S: Symbol>(_ s: S) -> Bool {
+  public func isNulling(_ s: Symbol) -> Bool {
     std(marpa_g_symbol_is_nulling(g, s.rawID)) != 0
   }
 
   /// Returns `true` iff `s` can be recognized.
-  public func isProductive<S: Symbol>(_ s: S) -> Bool {
+  public func isProductive(_ s: Symbol) -> Bool {
     std(marpa_g_symbol_is_productive(g, s.rawID)) != 0
   }
 
@@ -256,7 +247,7 @@ extension Grammar {
 
   /// Returns `true` iff `s` participates in the RHS of a sequence rule, either
   /// as the primary RHS symbol or as a separator.
-  public func isCountedInSequence<S: Symbol>(_ s: S) -> Bool {
+  public func isCountedInSequence(_ s: Symbol) -> Bool {
     std(marpa_g_symbol_is_counted(g, s.rawID)) != 0
   }
 }
@@ -339,14 +330,14 @@ extension Grammar {
   /// Enables the completion event trigger for `s`.
   ///
   /// - Precondition: `canTriggerCompletionEvent[s]``
-  public func enableCompletionEvent<S: Symbol>(s: S) {
+  public func enableCompletionEvent(_ s: Symbol) {
     _ = std(marpa_g_completion_symbol_activate(g, s.rawID, 1))
   }
   
   /// Disables the completion event trigger for `s`.
   ///
   /// - Precondition: `canTriggerCompletionEvent[s]``
-  public func disableCompletionEvent<S: Symbol>(s: S) {
+  public func disableCompletionEvent(_ s: Symbol) {
     _ = std(marpa_g_completion_symbol_activate(g, s.rawID, 0))
   }
 
@@ -358,7 +349,7 @@ extension Grammar {
     /// Accesses the “has completion event” flag of `s`.
     ///
     /// - Precondition(set): `!self.isPrecomputed`
-    public subscript<S: Symbol>(s: S) -> Bool {
+    public subscript(_ s: Symbol) -> Bool {
       get {
         g.std(marpa_g_symbol_is_completion_event(g.g, s.rawID)) != 0
       }
@@ -378,14 +369,14 @@ extension Grammar {
   /// Enables the nulled event trigger for `s`.
   ///
   /// - Precondition: `canTriggerNulledEvent[s]``
-  public func enableNulledEvent<S: Symbol>(s: S) {
+  public func enableNulledEvent(_ s: Symbol) {
     _ = std(marpa_g_nulled_symbol_activate(g, s.rawID, 1))
   }
   
   /// Disables the nulled event trigger for `s`.
   ///
   /// - Precondition: `canTriggerNulledEvent[s]``
-  public func disableNulledEvent<S: Symbol>(s: S) {
+  public func disableNulledEvent(_ s: Symbol) {
     _ = std(marpa_g_nulled_symbol_activate(g, s.rawID, 0))
   }
 
@@ -397,7 +388,7 @@ extension Grammar {
     /// Accesses the “has nulled event” flag of `s`.
     ///
     /// - Precondition(set): `!self.isPrecomputed`
-    public subscript<S: Symbol>(s: S) -> Bool {
+    public subscript(_ s: Symbol) -> Bool {
       get {
         g.std(marpa_g_symbol_is_nulled_event(g.g, s.rawID)) != 0
       }
@@ -417,14 +408,14 @@ extension Grammar {
   /// Enables the prediction event trigger for `s`.
   ///
   /// - Precondition: `canTriggerPredictionEvent[s]``
-  public func enablePredictionEvent<S: Symbol>(s: S) {
+  public func enablePredictionEvent(_ s: Symbol) {
     _ = std(marpa_g_prediction_symbol_activate(g, s.rawID, 1))
   }
   
   /// Disables the prediction event trigger for `s`.
   ///
   /// - Precondition: `canTriggerPredictionEvent[s]``
-  public func disablePredictionEvent<S: Symbol>(s: S) {
+  public func disablePredictionEvent(_ s: Symbol) {
     _ = std(marpa_g_prediction_symbol_activate(g, s.rawID, 0))
   }
 
@@ -436,7 +427,7 @@ extension Grammar {
     /// Accesses the “has prediction event” flag of `s`.
     ///
     /// - Precondition(set): `!self.isPrecomputed`
-    public subscript<S: Symbol>(s: S) -> Bool {
+    public subscript(_ s: Symbol) -> Bool {
       get {
         g.std(marpa_g_symbol_is_prediction_event(g.g, s.rawID)) != 0
       }

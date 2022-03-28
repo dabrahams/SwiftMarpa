@@ -482,9 +482,8 @@ class Recognizer {
   let g: Grammar;
   let r: Marpa_Recognizer;
 
-  func std(_ i: Int32) -> Int32 {
-    if i < 0 { fatal(i) }
-    return i
+  func std(_ i: Int32) -> UInt32 {
+    g.std(i)
   }
   
   public init(_ g: Grammar) {
@@ -539,19 +538,19 @@ class Recognizer {
   ///
   /// - Precondition: `s` is a valid earley set in `self`.
   func earleme(_ s: EarleySet) -> Earleme {
-    Earleme(id: g.std(marpa_r_earleme(r, s.rawID)))
+    Earleme(id: std(marpa_r_earleme(r, s.rawID)))
   }
   
   /// Returns the value associated with the given Earley set.
   func value(_ s: EarleySet) -> EarleySet.Value {
     var result: EarleySet.Value = (0, nil)
-    _ = g.std(marpa_r_earley_set_values(r, s.rawID, &result.0, &result.1))
+    _ = std(marpa_r_earley_set_values(r, s.rawID, &result.0, &result.1))
     return result
   }
 
   /// Returns the value associated with the given Earley set.
   func setValueOfLatestEarleySet(_ v: EarleySet.Value) {
-    _ = g.std(marpa_r_latest_earley_set_values_set(r, v.0, v.1))
+    _ = std(marpa_r_latest_earley_set_values_set(r, v.0, v.1))
   }
 
   /// The furthest earleme.
@@ -561,7 +560,7 @@ class Recognizer {
 
   /// The latest earley set.
   var latestEarleySet: EarleySet {
-    .init(id: g.std(marpa_r_latest_earley_set(r)))
+    .init(id: std(marpa_r_latest_earley_set(r)))
   }
 }
 
@@ -646,7 +645,7 @@ extension Recognizer {
   /// Returns the symbols acceptable as tokens at the current earleme.
   public var expectedTerminals: [Symbol] {
     var rawIDs: [Marpa_Symbol_ID] = Array(repeating: 0, count: g.symbolCount)
-    let n = Int(g.std(marpa_r_terminals_expected(r, &rawIDs)))
+    let n = Int(std(marpa_r_terminals_expected(r, &rawIDs)))
     return rawIDs[..<n].map { Symbol(id: Symbol.ID(truncatingIfNeeded: $0)) }
   }
 

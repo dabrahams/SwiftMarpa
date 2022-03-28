@@ -20,8 +20,12 @@ public final class Grammar {
   }
 }
 
-func fatal(_ x: Int32) -> Never {
-  fatalError("Marpa error: \(errorDescription[x]!)")
+func fatal(_ e: Int32) -> Never {
+  fatalError(
+    (recoverableConditions.contains(e) 
+       ? "BUG: unhandled supposedly-recoverable Marpa error "
+       : "Marpa error: ")
+      + "\(e) \(errorDescription[e] ?? "<unknown>")")
 }
 
 /// Result handling
@@ -481,80 +485,44 @@ class Recognizer {
     marpa_r_unref(r)
   }
 
-  // Makes `self` ready to accept input.
-  //
-  // The first Earley set, the one at earleme 0, will be completed during this
-  // call, so events may be generated. For details, see the documentation of
-  // `closeCurrentEarleme`.
+  /// Makes `self` ready to accept input.
+  ///
+  /// The first Earley set, the one at earleme 0, will be completed during this
+  /// call, so events may be generated. For details, see the documentation of
+  /// `closeCurrentEarleme`.
   func startInput() {
     _ = std(marpa_r_start_input(r))
   }
 
-  // Reads an input symbol `s` starting at the current earleme, returning a
-  // non-nil Marpa error code if the token is not recognized.
-  //
-  // - Parameter lengthInEarlemes: the number of earlemes spanned by `s` .
-  // - Parameter value: a value passed through to the evaluator.
-  //
-  // - Precondition: `value != 0`
+  /// Reads an input symbol `s` starting at the current earleme, returning a
+  /// non-nil Marpa error code if the token is not recognized.
+  ///
+  /// - Parameter lengthInEarlemes: the number of earlemes spanned by `s` .
+  /// - Parameter value: a value passed through to the evaluator.
+  ///
+  /// - Precondition: `value != 0`
   func read(
     _ s: Grammar.Nonterminal, lengthInEarlemes: Int32 = 1, value: Int32 = 1
   ) -> Int32? {
     let err = marpa_r_alternative(r, s.rawID, value, lengthInEarlemes)
+    if err == MARPA_ERR_NONE { return nil }
     if err == MARPA_ERR_UNEXPECTED_TOKEN_ID
          || err == MARPA_ERR_DUPLICATE_TOKEN
          || err == MARPA_ERR_NO_TOKEN_EXPECTED_HERE
          || err == MARPA_ERR_INACCESSIBLE_TOKEN { return err }
-    if err != MARPA_ERR_NONE { _ = std(err) }
+    _ = std(err)
     return nil
   }
 
-  // Advances the current earleme by 1, returning the number of events
-  // generated.
-  //
-  // During this method, one or more events may occur. On success, this function
-  // returns the number of events generated, but it is important to note that
-  // events may be created whether earleme completion fails or succeeds. When
-  // this method fails, the application must call marpa_g_event() if it wants to
-  // determine if any events occurred. Since the reason for failure to complete
-  // an earleme is often detailed in the events, applications that fail will
-  // often be at least as interested in the events as those that succeed.
-  // 
-  // The MARPA_EVENT_EARLEY_ITEM_THRESHOLD event indicates that an
-  // application-settable threshold on the number of Earley items has been reached
-  // or exceeded. What this means depends on the application, but when the default
-  // threshold is exceeded, it means that it is very likely that the time and
-  // space resources consumed by the parse will prove excessive.
-  // 
-  // A parse is “exhausted” when it can accept no more input. This can happen both
-  // on success and on failure. Note that the failure due to parse exhaustion only
-  // means failure at the current earleme. There may be successful parses at
-  // earlier earlemes.
-  // 
-  // If a parse is exhausted, but successful, an event with the event code
-  // MARPA_EVENT_EXHAUSTED occurs. Because the parse is exhausted, no input will
-  // be accepted at later earlemes. It is quite common for a parse to become
-  // exhausted when it succeeds. Many practical grammars are designed so that a
-  // successful parse cannot be extended.
-  // 
-  // An exhausted parse may cause a failure, in which case
-  // marpa_r_earleme_complete() returns an error whose error code is
-  // MARPA_ERR_PARSE_EXHAUSTED. For a parse to fail at an earleme due to
-  // exhaustion, it must be the case that no alternatives were accepted at that
-  // earleme. In fact, in the standard input model, a failure due to parse
-  // exhaustion occurs if and only if no alternatives were accepted at the current
-  // earleme.
-  // 
-  // The circumstances under which failure due to parse exhaustion occurs are
-  // slightly more complicated when variable length tokens are in use. Informally,
-  // a parse will never fail due to exhaustion as long as it is possible that a
-  // token ending at some future earleme will continue the parse. More precisely,
-  // a call to marpa_r_earleme_complete() fails due to parse exhaustion if and
-  // only if, first, no alternatives were added at the current earleme and,
-  // second, that call left the current earleme equal to the furthest earleme.
-  @discardableResult
-  func advanceEarleme() -> Int {
-    Int(std(marpa_r_earleme_complete(r)))
+  // Advances the current earleme by 1.
+  func advanceEarleme() {
+    _ = std(marpa_r_earleme_complete(r))
+  }
+
+  /// The current earleme number, or `nil` if `startInput` has not yet been
+  /// called.
+  var currentEarleme: UInt32? {
+    g.stdOpt(marpa_r_current_earleme(r))
   }
 }
 

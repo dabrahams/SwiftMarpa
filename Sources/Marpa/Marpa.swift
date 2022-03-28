@@ -56,11 +56,19 @@ extension Grammar {
   }
 }
 
-public struct Symbol: Hashable {
-  public typealias ID = UInt32
-  let id: ID
-  var rawID: Marpa_Symbol_ID { .init(truncatingIfNeeded: id) }
+public protocol Numbered: Hashable, Comparable {
+  typealias ID = UInt32
+  var id: ID { get }
 }
+
+extension Numbered {
+  var rawID: Int32 { .init(truncatingIfNeeded: id) }
+  public static func <(lhs: Self, rhs: Self) -> Bool {
+    return lhs.rawID < rhs.rawID
+  }
+}
+
+public struct Symbol: Numbered { public let id: ID }
 
 /// Symbols
 extension Grammar {
@@ -130,13 +138,9 @@ extension Grammar {
 }
 
 /// Rules
-extension Grammar {
-  public struct Rule: Hashable {
-    public typealias ID = UInt32
-    public let id: ID
-    public var rawID: Marpa_Rule_ID { .init(truncatingIfNeeded: id) }
-  }
+public struct Rule: Numbered { public let id: ID }
 
+extension Grammar {
   /// The number of rules in `self`.
   ///
   /// Rule IDs are in `0..<ruleCount`.
@@ -257,7 +261,7 @@ extension Grammar {
 }
 
 /// Ranks
-extension Grammar.Rule {
+extension Rule {
   public typealias Rank = Marpa_Rank
 }
 
@@ -467,6 +471,13 @@ extension Grammar {
   }
 }
 
+public struct EarleySet: Numbered { public let id: ID }
+public struct Earleme: Numbered { public let id: ID }
+
+extension EarleySet {
+  public typealias Value = (Int32, UnsafeMutableRawPointer?)
+}
+
 class Recognizer {
   let g: Grammar;
   let r: Marpa_Recognizer;
@@ -519,10 +530,38 @@ class Recognizer {
     _ = std(marpa_r_earleme_complete(r))
   }
 
-  /// The current earleme number, or `nil` if `startInput` has not yet been
-  /// called.
-  var currentEarleme: UInt32? {
-    g.stdOpt(marpa_r_current_earleme(r))
+  /// The current earleme, or `nil` if `startInput` has not yet been called.
+  var currentEarleme: Earleme? {
+    g.stdOpt(marpa_r_current_earleme(r)).map { .init(id: $0) }
+  }
+
+  /// Returns the Earleme corresponding to `s`.
+  ///
+  /// - Precondition: `s` is a valid earley set in `self`.
+  func earleme(_ s: EarleySet) -> Earleme {
+    Earleme(id: g.std(marpa_r_earleme(r, s.rawID)))
+  }
+  
+  /// Returns the value associated with the given Earley set.
+  func value(_ s: EarleySet) -> EarleySet.Value {
+    var result: EarleySet.Value = (0, nil)
+    _ = g.std(marpa_r_earley_set_values(r, s.rawID, &result.0, &result.1))
+    return result
+  }
+
+  /// Returns the value associated with the given Earley set.
+  func setValueOfLatestEarleySet(_ v: EarleySet.Value) {
+    _ = g.std(marpa_r_latest_earley_set_values_set(r, v.0, v.1))
+  }
+
+  /// The furthest earleme.
+  var furthestEarleme: Earleme {
+    .init(id: marpa_r_furthest_earleme(r))
+  }
+
+  /// The latest earley set.
+  var latestEarleySet: EarleySet {
+    .init(id: g.std(marpa_r_latest_earley_set(r)))
   }
 }
 

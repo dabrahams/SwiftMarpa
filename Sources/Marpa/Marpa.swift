@@ -565,6 +565,23 @@ class Recognizer {
   }
 }
 
+/// Other parse status methods
+extension Recognizer {
+  /// Enables the completion event trigger for `s`.
+  ///
+  /// - Precondition: `s` was set up for completion events in the grammar.
+  public func enablePredictionEvent(_ s: Symbol) {
+    _ = std(marpa_r_completion_symbol_activate(r, s.rawID, 1))
+  }
+  
+  /// Disables the completion event trigger for `s`.
+  ///
+  /// - Precondition: `s` was set up for completion events in the grammar.
+  public func disablePredictionEvent(_ s: Symbol) {
+    _ = std(marpa_r_completion_symbol_activate(r, s.rawID, 0))
+  }
+}
+
 let errorDescription: [Int32: StaticString] = [
   MARPA_ERR_NONE: "No error",
   MARPA_ERR_AHFA_IX_NEGATIVE: "MARPA_ERR_AHFA_IX_NEGATIVE",

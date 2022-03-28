@@ -643,6 +643,17 @@ extension Recognizer {
     _ = std(marpa_r_prediction_symbol_activate(r, s.rawID, 0))
   }
 
+  /// Returns the symbols acceptable as tokens at the current earleme.
+  public var expectedTerminals: [Symbol] {
+    var rawIDs: [Marpa_Symbol_ID] = Array(repeating: 0, count: g.symbolCount)
+    let n = Int(g.std(marpa_r_terminals_expected(r, &rawIDs)))
+    return rawIDs[..<n].map { Symbol(id: Symbol.ID(truncatingIfNeeded: $0)) }
+  }
+
+  /// Returns `true` iff `s` is expected at the current earleme.
+  public func expects(_ s: Symbol) -> Bool {
+    std(marpa_r_terminal_is_expected(r, s.rawID)) != 0
+  }
 }
 
 let errorDescription: [Int32: StaticString] = [

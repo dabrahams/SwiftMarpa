@@ -570,16 +570,79 @@ extension Recognizer {
   /// Enables the completion event trigger for `s`.
   ///
   /// - Precondition: `s` was set up for completion events in the grammar.
-  public func enablePredictionEvent(_ s: Symbol) {
+  public func enableCompletionEvent(_ s: Symbol) {
     _ = std(marpa_r_completion_symbol_activate(r, s.rawID, 1))
   }
   
   /// Disables the completion event trigger for `s`.
   ///
   /// - Precondition: `s` was set up for completion events in the grammar.
-  public func disablePredictionEvent(_ s: Symbol) {
+  public func disableCompletionEvent(_ s: Symbol) {
     _ = std(marpa_r_completion_symbol_activate(r, s.rawID, 0))
   }
+
+  /// An Earley set size above which `MARPA_EVENT_EARLEY_ITEM_THRESHOLD` is
+  /// triggered.
+  ///
+  /// If threshold is zero or less, an unlimited number of Earley items will be
+  /// allowed without warning. This will rarely be what the user wants.  By
+  /// default, a likely-appropriate value is calculated based on the grammar. 
+  public var earleyItemWarningThreshold: Int32 {
+    get {
+      marpa_r_earley_item_warning_threshold(r)
+    }
+    set {
+      marpa_r_earley_item_warning_threshold_set(r, newValue)
+    }
+  }
+
+  /// Enables the expected symbol event trigger for `s`.
+  ///
+  /// - Precondition: `s` is neither nulling, inaccessible, nor unproductive.
+  public func enableExpectedEvent(_ s: Symbol) {
+    _ = std(marpa_r_completion_symbol_activate(r, s.rawID, 1))
+  }
+  
+  /// Disables the expected symbol event trigger for `s`.
+  ///
+  /// - Precondition: `s` is neither nulling, inaccessible, nor unproductive.
+  public func disableExpectedEvent(_ s: Symbol) {
+    _ = std(marpa_r_completion_symbol_activate(r, s.rawID, 0))
+  }
+
+  /// True iff `self` cannot accept any more input.
+  var isExhausted: Bool {
+    marpa_r_is_exhausted(r) != 0
+  }
+
+  /// Enables the nulled event trigger for `s`.
+  ///
+  /// - Precondition: `s` was set up for nulled events in the grammar.
+  public func enableNulledEvent(_ s: Symbol) {
+    _ = std(marpa_r_nulled_symbol_activate(r, s.rawID, 1))
+  }
+  
+  /// Disables the nulled event trigger for `s`.
+  ///
+  /// - Precondition: `s` was set up for nulled events in the grammar.
+  public func disableNulledEvent(_ s: Symbol) {
+    _ = std(marpa_r_nulled_symbol_activate(r, s.rawID, 0))
+  }
+
+  /// Enables the symbol prediction event trigger for `s`.
+  ///
+  /// - Precondition: `s` was set up for prediction events in the grammar.
+  public func enablePredictionEvent(_ s: Symbol) {
+    _ = std(marpa_r_prediction_symbol_activate(r, s.rawID, 1))
+  }
+  
+  /// Disables the symbol prediction event trigger for `s`.
+  ///
+  /// - Precondition: `s` was set up for prediction events in the grammar.
+  public func disablePredictionEvent(_ s: Symbol) {
+    _ = std(marpa_r_prediction_symbol_activate(r, s.rawID, 0))
+  }
+
 }
 
 let errorDescription: [Int32: StaticString] = [

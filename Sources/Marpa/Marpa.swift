@@ -479,9 +479,10 @@ extension EarleySet {
 }
 
 class Recognizer {
-  let g: Grammar;
-  let r: Marpa_Recognizer;
-
+  let g: Grammar
+  let r: Marpa_Recognizer
+  weak var progress: ProgressReport?
+  
   func std(_ i: Int32) -> UInt32 {
     g.std(i)
   }
@@ -652,6 +653,49 @@ extension Recognizer {
   /// Returns `true` iff `s` is expected at the current earleme.
   public func expects(_ s: Symbol) -> Bool {
     std(marpa_r_terminal_is_expected(r, s.rawID)) != 0
+  }
+}
+
+extension Recognizer {
+  /// A sequence whose elements describe each rule being recognized at a given
+  /// position, where the rule started, and how many of its RHS symbols have
+  /// been recognized.
+  public class ProgressReport: Sequence, IteratorProtocol {
+    let r: Recognizer
+
+    init(of r: Recognizer, at position: EarleySet) {
+      self.r = r
+      _ = r.std(marpa_r_progress_report_start(r.r, position.rawID))
+    }
+
+    deinit {
+      marpa_r_progress_report_finish(r.r)
+    }
+
+    /// Returns the next rule being recognized, where the rule started, and how
+    /// many of its RHS symbols have been recognized, or `nil` if there are no
+    /// more rules being recognized.
+    public func next() -> (Rule, origin: EarleySet, progress: Int)? {
+      var progress: Int32 = 0
+      var origin: Int32 = 0
+      let rule = marpa_r_progress_item(r.r, &progress, &origin)
+      if rule == -1 { return nil }
+      return (
+        Rule(id: r.std(rule)),
+        origin: .init(id: UInt32(origin)),
+        progress: Int(progress))
+    }
+  }
+
+  /// Returns a sequence whose elements describe each rule being recognized at
+  /// `position`, where the rule started, and how many of its RHS symbols have
+  /// been recognized.
+  ///
+  /// - Precondition: no other progress report for `self` exists.
+  public func progress(at position: EarleySet) -> ProgressReport {
+    let progress = ProgressReport(of: self, at: position)
+    self.progress = progress
+    return progress
   }
 }
 

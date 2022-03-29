@@ -478,7 +478,7 @@ extension EarleySet {
   public typealias Value = (Int32, UnsafeMutableRawPointer?)
 }
 
-class Recognizer {
+public final class Recognizer {
   let g: Grammar
   let r: Marpa_Recognizer
   weak var progress: ProgressReport?
@@ -660,7 +660,7 @@ extension Recognizer {
   /// A sequence whose elements describe each rule being recognized at a given
   /// position, where the rule started, and how many of its RHS symbols have
   /// been recognized.
-  public class ProgressReport: Sequence, IteratorProtocol {
+  public final class ProgressReport: Sequence, IteratorProtocol {
     let r: Recognizer
 
     init(of r: Recognizer, at position: EarleySet) {
@@ -698,6 +698,103 @@ extension Recognizer {
     return progress
   }
 }
+
+public final class Bocage {
+  let b: Marpa_Bocage
+  let g: Grammar
+
+  /// Creates an instance ending at `endPosition`, or at `r`'s current earley
+  /// set if `endPosition` is `nil`, yielding `nil` if there are no such valid
+  /// parses.
+  public init?(_ r: Recognizer, endPosition: EarleySet? = nil) {
+    g = r.g
+    guard let b = marpa_b_new(r.r, endPosition?.rawID ?? -1) else {
+      if g.err == MARPA_ERR_NO_PARSE { return nil }
+      fatal(g.err)
+    }
+    self.b = b
+  }
+
+  /// `True` iff the parse set was ambiguous.
+  public var isAmbiguous: Bool {
+    g.std(marpa_b_ambiguity_metric(b)) > 1
+  }
+  
+  /// `True` iff the parsed input was empty.
+  public var isNull: Bool {
+    g.std(marpa_b_is_null(b)) != 0
+  }
+  
+  deinit {
+    marpa_b_unref(b)
+  }
+}
+
+public final class Tree {
+  let v: Marpa_Value
+
+  init(_ t: Marpa_Tree) {
+    v = marpa_v_new(t)
+  }
+  
+  deinit {
+    marpa_v_unref(v)
+  }
+}
+
+public final class Order: Sequence {
+  let o: Marpa_Order
+  let g: Grammar
+  
+  public final class Iterator: IteratorProtocol {
+    let t: Marpa_Tree
+    let g: Grammar
+
+    init(_ o: Order) {
+      g = o.g
+      guard let t = marpa_t_new(o.o) else { fatal(g.err) }
+      self.t = t
+    }
+    
+    public func next() -> Tree? {
+      let e = marpa_t_next(t)
+      if e == -1 { return nil }
+      _ = g.std(e)
+      return Tree(t)
+    }
+
+    deinit {
+      marpa_t_unref(t)
+    }
+  }
+
+  public func makeIterator() -> Iterator {
+    return Iterator(self)
+  }
+  
+  public init(_ b: Bocage, highRankOnly: Bool = true) {
+    g = b.g
+    guard let o = marpa_o_new(b.b) else { fatal(g.err) }
+    self.o = o
+    _ = g.std(marpa_o_high_rank_only_set(o, highRankOnly ? 1 : 0))
+    _ = g.std(marpa_o_rank(o))
+  }
+
+  /// True iff the parse set was ambiguous.
+  public var isAmbiguous: Bool {
+    g.std(marpa_o_ambiguity_metric(o)) > 1
+  }
+  
+  /// True iff the parsed input was empty.
+  public var isNull: Bool {
+    return g.std(marpa_o_is_null(o)) != 0
+  }
+  
+  deinit {
+    marpa_o_unref(o)
+  }
+}
+
 
 let errorDescription: [Int32: StaticString] = [
   MARPA_ERR_NONE: "No error",

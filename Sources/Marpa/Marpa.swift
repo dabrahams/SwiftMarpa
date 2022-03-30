@@ -861,6 +861,58 @@ public final class Order: Sequence {
   }
 }
 
+public enum Event {
+  case countedNullable(Symbol),
+       earleyItemThresholdExceeded(earleyItemCount: Int32),
+       parseExhausted,
+       loopRules(count: Int32),
+       nullingTerminal(Symbol),
+       completed(Symbol),
+       expected(Symbol),
+       nulled(Symbol),
+       predicted(Symbol)
+}
+
+extension Grammar {
+  public struct Events: RandomAccessCollection {
+    let g: Grammar
+
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { Int(marpa_g_event_count(g.g)) }
+    public subscript(i: Int) -> Event {
+      var e = Marpa_Event(t_type: 0, t_value: 0)
+      if marpa_g_event(g.g, &e, Int32(i)) == -2 {
+        fatal(g.err)
+      }
+      switch e.t_type {
+      case MARPA_EVENT_COUNTED_NULLABLE:
+        return .countedNullable(Symbol(id: Symbol.ID(e.t_value)))
+      case MARPA_EVENT_EARLEY_ITEM_THRESHOLD:
+        return .earleyItemThresholdExceeded(earleyItemCount: e.t_value)
+      case MARPA_EVENT_EXHAUSTED:
+        return .parseExhausted
+      case MARPA_EVENT_LOOP_RULES:
+        return .loopRules(count: e.t_value)
+      case MARPA_EVENT_NULLING_TERMINAL:
+        return .nullingTerminal(Symbol(id: Symbol.ID(e.t_value)))
+      case MARPA_EVENT_SYMBOL_COMPLETED:
+        return .completed(Symbol(id: Symbol.ID(e.t_value)))
+      case MARPA_EVENT_SYMBOL_EXPECTED:
+        return .expected(Symbol(id: Symbol.ID(e.t_value)))
+      case MARPA_EVENT_SYMBOL_NULLED:
+        return .nulled(Symbol(id: Symbol.ID(e.t_value)))
+      case MARPA_EVENT_SYMBOL_PREDICTED:
+        return .predicted(Symbol(id: Symbol.ID(e.t_value)))
+      default:
+        fatal(g.err)
+      }
+    }
+  }
+
+  var events: Events {
+    return Events(g: self)
+  }
+}
 
 let errorDescription: [Int32: StaticString] = [
   MARPA_ERR_NONE: "No error",

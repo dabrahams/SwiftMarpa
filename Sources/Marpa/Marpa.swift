@@ -730,11 +730,77 @@ public final class Bocage {
   }
 }
 
-public final class Tree {
-  let v: Marpa_Value
+func marpa_v_step_type(_ v: Marpa_Value) -> Int32 { v[0].t_step_type }
+func marpa_v_token(_ v: Marpa_Value) -> Int32 { v[0].t_token_id }
+let marpa_v_symbol = marpa_v_token
+func marpa_v_token_value(_ v: Marpa_Value) -> Int32 { v[0].t_token_value }
+func marpa_v_rule(_ v: Marpa_Value) -> Int32 { v[0].t_rule_id }
+func marpa_v_arg_0(_ v: Marpa_Value) -> Int32 { v[0].t_arg_0 }
+func marpa_v_arg_n(_ v: Marpa_Value) -> Int32 { v[0].t_arg_n }
+func marpa_v_result(_ v: Marpa_Value) -> Int32 { v[0].t_result }
+func marpa_v_rule_start_es_id(_ v: Marpa_Value) -> Int32 { v[0].t_rule_start_ys_id }
+func marpa_v_token_start_es_id(_ v: Marpa_Value) -> Int32 { v[0].t_token_start_ys_id }
+func marpa_v_es_id(_ v: Marpa_Value) -> Int32 { v[0].t_ys_id }
 
-  init(_ t: Marpa_Tree) {
+public final class Evaluation: Sequence, IteratorProtocol {
+  let v: Marpa_Value
+  let g: Grammar
+  
+  public enum Step {
+    case symbol(
+           Symbol, lhsAddress: UInt32, tokenValue: Int32?,
+           sourceRange: Range<EarleySet>
+         )
+    case rule(
+           Rule,
+           rhsAddresses: ClosedRange<UInt32>,
+           sourceRange: Range<EarleySet>
+         )
+
+    public var lhsAddress: UInt32 {
+      switch self {
+      case .symbol(_, let r, _, _): return r
+      case .rule(_, let r, _): return r.first!
+      }
+    }
+
+    public var sourceRange: Range<EarleySet> {
+      switch self {
+      case .symbol(_, _, _, let r), .rule(_, _, let r):
+        return r
+      }
+    }
+  }
+
+  public func next() -> Step? {
+    let r = marpa_v_step(v)
+    if r == MARPA_STEP_INACTIVE { return nil }
+    let sourceEnd = EarleySet(id: .init(marpa_v_es_id(v)))
+    
+    switch r {
+    case MARPA_STEP_RULE:
+      return .rule(
+        Rule(id: Rule.ID(marpa_v_rule(v))),
+        rhsAddresses: UInt32(marpa_v_arg_0(v))...UInt32(marpa_v_arg_n(v)),
+        sourceRange:
+          EarleySet(id: .init(marpa_v_rule_start_es_id(v)))..<sourceEnd
+      )
+    case MARPA_STEP_TOKEN, MARPA_STEP_NULLING_SYMBOL:
+      return .symbol(
+        Symbol(id: Symbol.ID(marpa_v_token(v))),
+        lhsAddress: UInt32(marpa_v_result(v)),
+        tokenValue: r == MARPA_STEP_TOKEN ? marpa_v_token_value(v) : nil,
+        sourceRange:
+          EarleySet(id: .init(marpa_v_token_start_es_id(v)))..<sourceEnd
+      )
+    default:
+      fatal(g.err)
+    }
+  }
+  
+  init(_ t: Marpa_Tree, _ g: Grammar) {
     v = marpa_v_new(t)
+    self.g = g
   }
   
   deinit {
@@ -756,11 +822,11 @@ public final class Order: Sequence {
       self.t = t
     }
     
-    public func next() -> Tree? {
+    public func next() -> Evaluation? {
       let e = marpa_t_next(t)
       if e == -1 { return nil }
       _ = g.std(e)
-      return Tree(t)
+      return Evaluation(t, g)
     }
 
     deinit {

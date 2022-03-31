@@ -301,7 +301,7 @@ extension Grammar {
   }
 
   /// The ranking of each rule.
-  var rank: RankMap { .init(g: self) }
+  public var rank: RankMap { .init(g: self) }
 
   /// A writable mapping from a `Rule` to its “ranks high” flag.
   public struct RanksHighMap {
@@ -319,32 +319,7 @@ extension Grammar {
   }
   
   /// The “null ranks high” flag of each rule.
-  var nullRanksHigh: RanksHighMap { .init(g: self) }
-
-  /*
-  /// Sets the rank of `r` to `newRank`.
-  public func setRank(of r: Rule, to newRank: Rule.Rank) {
-    if marpa_g_rule_rank_set(g, r.rawID, newRank) == -2 {
-      checkCode(err)
-    }
-  }
-  
-  /// Returns the rank of `r`.
-  public func rank(of r: Rule) -> Rule.Rank {
-    let r = marpa_g_rule_rank(g, r.rawID)
-    return r != -2 ? r : hidden(r)
-  }
-
-  /// Sets the “null ranks high” attribute of `r` to `newRanksHigh`.
-  public func setNullRanksHigh(of r: Rule, to newRanksHigh: Bool) {
-    _ = std(marpa_g_rule_null_high_set(g, r.rawID, newRanksHigh ? 1 : 0))
-  }
-  
-  /// Returns the “null ranks high” attribute of `r`.
-  public func getNullRanksHigh(of r: Rule) -> Bool {
-    std(marpa_g_rule_null_high(g, r.rawID)) != 0
-  }
-   */
+  public var nullRanksHigh: RanksHighMap { .init(g: self) }
 }
 
 /// Completion Events

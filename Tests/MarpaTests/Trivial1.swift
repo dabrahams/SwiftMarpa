@@ -11,17 +11,16 @@ private extension TestGrammar {
     self.init(nullableCs: true)
     g.startSymbol = top
     XCTAssertEqual(g.startSymbol, top)
-    g.precompute()
   }
 }
 
 /// Test case mirroring trivial1.c from the libMarpa repo.
 final class Trivial1: XCTestCase {
-  func test() {
+  func test1() {
     let g0 = TestGrammar()
+    g0.g.precompute()
     let g = g0.g
-    let (top, a1, a2, b1, b2, c1, c2)
-      = (g0.top, g0.a1, g0.a2, g0.b1, g0.b2, g0.c1, g0.c2)
+    let (top, a1, a2, c2) = (g0.top, g0.a1, g0.a2, g0.c2)
     let (top1, top2, c2_1) = (g0.top1, g0.top2, g0.c2_1!)
 
     XCTAssertEqual(g.allSymbols.count, Int(c2.id + 1))
@@ -63,103 +62,41 @@ final class Trivial1: XCTestCase {
 
     XCTAssertFalse(g.isProperSeparation(top1))
     XCTAssertFalse(g.isCountedInSequence(top))
+  }
+
+  func test2() {
+    let g0 = TestGrammar()
+    let g = g0.g
+    let (top1, top2) = (g0.top1, g0.top2)
+    
+    /* Ranks */
+    g.rank[top1] = -2
+    XCTAssertEqual(g.rank[top1], -2)
+    
+    g.rank[top2] = 2
+    XCTAssertEqual(g.rank[top2], 2)
+
+    g.nullRanksHigh[top2] = true
+    XCTAssert(g.nullRanksHigh[top2])
+    
+    g0.g.precompute()
+    
+    /* getters succeed */
+    XCTAssertEqual(g.rank[top1], -2)
+    XCTAssertEqual(g.rank[top2], 2)
+    XCTAssert(g.nullRanksHigh[top2])
+  }
+
+  func test3() {
+  
     /*    
+    let g0 = TestGrammar()
+    let g = g0.g
+    let (top, a1, a2, b1, b2, c1, c2)
+      = (g0.top, g0.a1, g0.a2, g0.b1, g0.b2, g0.c1, g0.c2)
+    let (top1, top2, c2_1) = (g0.top1, g0.top2, g0.c2_1!)
 
-  /* Sequences */
 
-  /* non-sequence rule id */
-  API_STD_TEST1(defaults, 0, MARPA_ERR_NONE, marpa_g_rule_is_proper_separation, g, R_top_1);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NOT_A_SEQUENCE, marpa_g_sequence_min, g, R_top_1);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_NOT_A_SEQUENCE, marpa_g_sequence_separator, g, R_top_1);
-  API_STD_TEST1(defaults, 0, MARPA_ERR_NONE, marpa_g_symbol_is_counted, g, S_top);
-
-  /* invalid/no such rule id error handling */
-
-  /* Sequence mutator methods */
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_sequence_separator, g, R_invalid);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_sequence_min, g, R_invalid);
-
-  /* Sequence mutator methods */
-  API_STD_TEST1(defaults, -2, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_sequence_separator, g, R_no_such);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_sequence_min, g, R_no_such);
-
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_rule_is_proper_separation, g, R_invalid);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_rule_is_proper_separation, g, R_no_such);
-
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_SYMBOL_ID, marpa_g_symbol_is_counted, g, S_invalid);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_SYMBOL_ID, marpa_g_symbol_is_counted, g, S_no_such);
-
-  /* Ranks */
-  negative_rank = -2;
-  API_HIDDEN_TEST2(defaults, negative_rank, MARPA_ERR_NONE,
-      marpa_g_rule_rank_set, g, R_top_1, negative_rank);
-  API_HIDDEN_TEST1(defaults, negative_rank, MARPA_ERR_NONE,
-      marpa_g_rule_rank, g, R_top_1);
-
-  positive_rank = 2;
-  API_HIDDEN_TEST2(defaults, positive_rank, MARPA_ERR_NONE,
-      marpa_g_rule_rank_set, g, R_top_2, positive_rank);
-  API_HIDDEN_TEST1(defaults, positive_rank, MARPA_ERR_NONE,
-      marpa_g_rule_rank, g, R_top_2);
-
-  flag = 1;
-  API_HIDDEN_TEST2(defaults, flag, MARPA_ERR_NONE,
-      marpa_g_rule_null_high_set, g, R_top_2, flag);
-  API_HIDDEN_TEST1(defaults, flag, MARPA_ERR_NONE,
-      marpa_g_rule_null_high, g, R_top_2);
-
-  /* invalid/no such rule id error handling */
-
-  /* Rank setter methods */
-  API_HIDDEN_TEST2(defaults, -2, MARPA_ERR_INVALID_RULE_ID,
-      marpa_g_rule_rank_set, g, R_invalid, negative_rank);
-
-  API_HIDDEN_TEST2(defaults, -2, MARPA_ERR_INVALID_RULE_ID,
-      marpa_g_rule_null_high_set, g, R_invalid, whatever);
-
-  API_HIDDEN_TEST2(defaults, -2, MARPA_ERR_NO_SUCH_RULE_ID,
-      marpa_g_rule_rank_set, g, R_no_such, negative_rank);
-
-  API_HIDDEN_TEST2(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID,
-      marpa_g_rule_null_high_set, g, R_no_such, whatever);
-
-  /* Rank getter methods */
-  API_HIDDEN_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID,
-      marpa_g_rule_rank, g, R_invalid);
-
-  API_HIDDEN_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID,
-      marpa_g_rule_null_high, g, R_invalid);
-
-  API_HIDDEN_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID,
-      marpa_g_rule_null_high, g, R_invalid);
-  API_HIDDEN_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID,
-      marpa_g_rule_null_high, g, R_no_such);
-
-  marpa_g_trivial_precompute(g, S_top);
-  ok(1, "precomputation succeeded");
-
-  /* Ranks methods on precomputed grammar */
-  /* setters fail */
-  API_HIDDEN_TEST2(defaults, -2, MARPA_ERR_PRECOMPUTED,
-      marpa_g_rule_rank_set, g, R_top_1, negative_rank);
-  API_HIDDEN_TEST2(defaults, -2, MARPA_ERR_PRECOMPUTED,
-      marpa_g_rule_rank_set, g, R_top_2, negative_rank);
-
-  API_HIDDEN_TEST2(defaults, -2, MARPA_ERR_PRECOMPUTED,
-      marpa_g_rule_null_high_set, g, R_top_2, flag);
-
-  /* getters succeed */
-  API_HIDDEN_TEST1(defaults, negative_rank, MARPA_ERR_NONE,
-      marpa_g_rule_rank, g, R_top_1);
-  API_HIDDEN_TEST1(defaults, positive_rank, MARPA_ERR_NONE,
-      marpa_g_rule_rank, g, R_top_2);
-
-  API_HIDDEN_TEST1(defaults, flag, MARPA_ERR_NONE,
-      marpa_g_rule_null_high, g, R_top_2);
-
-  /* recreate the grammar to test event methods except nulled */
-  marpa_g_unref(g);
-  g = marpa_g_trivial_new(&marpa_configuration);
 
   /* Events */
   /* test that attempts to create events, other than nulled events,

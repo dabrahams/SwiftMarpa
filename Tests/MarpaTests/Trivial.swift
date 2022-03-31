@@ -10,12 +10,10 @@ private extension TestGrammar {
 /// Test case mirroring trivial.c from the libMarpa repo.
 final class Trivial: XCTestCase {
   func test() {
-    let g = TestGrammar(terminalCs: false)
-    for s in g.allSymbols {
+    let g = TestGrammar(nullableCs: true)
+    for s in g.g.allSymbols {
       g.g.canTriggerNulledEvent[s] = true
     }
-    _ = g.g.makeRule(lhs: g.c1, rhs: [])
-    _ = g.g.makeRule(lhs: g.c2, rhs: [])
     g.g.startSymbol = g.top
     g.g.precompute()
 
@@ -39,7 +37,7 @@ final class Trivial: XCTestCase {
     }
     XCTAssertEqual(exhaustionEventCount, 1)
 
-    for s in g.allSymbols {
+    for s in g.g.allSymbols {
       XCTAssertEqual(nulledEventCount[s], g.isNullable(s) ? 1 : 0, "\(s)")
     }
   }

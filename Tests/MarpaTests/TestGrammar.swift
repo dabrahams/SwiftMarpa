@@ -1,24 +1,20 @@
 import Marpa
 
+//@dynamicMemberLookup
 struct TestGrammar {
-  let g = Marpa.Grammar()
+  private(set) var g = Marpa.Grammar()
   let top, a1, a2, b1, b2, c1, c2: Symbol
   let top1, top2: Rule
+  var c2_1: Rule? = nil
   
-  init(terminalCs: Bool = true) {
+  init(nullableCs: Bool) {
     top = g.makeNonterminal()
     a1 = g.makeNonterminal()
     a2 = g.makeNonterminal()
     b1 = g.makeNonterminal()
     b2 = g.makeNonterminal()
-    if terminalCs {
-      c1 = g.makeTerminal()
-      c2 = g.makeTerminal()
-    }
-    else {
-      c1 = g.makeNonterminal()
-      c2 = g.makeNonterminal()
-    }
+    c1 = nullableCs ? g.makeNonterminal() : g.makeTerminal()
+    c2 = nullableCs ? g.makeNonterminal() : g.makeTerminal()
     
     top1 = g.makeRule(lhs: top, rhs: [a1])
     top2 = g.makeRule(lhs: top, rhs: [a2])
@@ -26,10 +22,21 @@ struct TestGrammar {
     _ = g.makeRule(lhs: a2, rhs: [b2])
     _ = g.makeRule(lhs: b1, rhs: [c1])
     _ = g.makeRule(lhs: b2, rhs: [c2])
+    
+    _ = nullableCs ? g.makeRule(lhs: c1, rhs: []) : nil
+    c2_1 = nullableCs ? g.makeRule(lhs: c2, rhs: []) : nil
   }
 
-  var allSymbols: [Symbol] {
-    return [top, a1, a2, b1, b2, c1, c2]
+  /*
+  subscript<T>(dynamicMember p: KeyPath<Marpa.Grammar, T>) -> T {
+    get { g[keyPath: p] }
   }
+  
+  subscript<T>(dynamicMember p: WritableKeyPath<Marpa.Grammar, T>) -> T {
+    get { g[keyPath: p] }
+    set { g[keyPath: p] = newValue }
+  }
+  
+   */
 }
 

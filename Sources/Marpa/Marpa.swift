@@ -209,9 +209,9 @@ extension Grammar {
   }
 
   /// Returns the `r`'s RHS symbol IDs.
-  public func rhsIDs(_ r: Rule) -> LazyMapSequence<Range<Int>, UInt32> {
+  public func rhs(_ r: Rule) -> LazyMapSequence<Range<Int>, Symbol> {
     (0..<rhsCount(r)).lazy.map {
-      self.std(marpa_g_rule_rhs(self.g, r.rawID, Int32($0)))
+      .init(id: self.std(marpa_g_rule_rhs(self.g, r.rawID, Int32($0))))
     }
   }
 }

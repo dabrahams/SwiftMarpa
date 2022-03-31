@@ -4,7 +4,7 @@ import Marpa
 /// Test case mirroring nits.c from the libMarpa repo.
 final class Nits: XCTestCase {
   func test() {
-    let g = TestGrammar()
+    let g = TestGrammar(nullableCs: false)
     // precompute
     g.g.startSymbol = g.top
     g.g.precompute()

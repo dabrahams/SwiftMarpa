@@ -111,6 +111,10 @@ extension Grammar {
     Int(stdOpt(marpa_g_highest_symbol_id(g)) ?? 0) + 1
   }
 
+  public var allSymbols: LazyMapSequence<Range<Int>, Symbol> {
+    (0..<symbolCount).lazy.map { Symbol(id: .init(truncatingIfNeeded: $0)) }
+  }
+
   /// Returns `true` iff `s` can participate in a complete parse of the start
   /// symbol.
   public func isAccessible(_ s: Symbol) -> Bool {
@@ -148,6 +152,11 @@ extension Grammar {
     Int(stdOpt(marpa_g_highest_rule_id(g)) ?? 0) + 1
   }
 
+  public var allRules: LazyMapSequence<Range<Int>, Rule> {
+    (0..<ruleCount).lazy.map { Rule(id: .init(truncatingIfNeeded: $0)) }
+  }
+
+  
   /// Returns true iff `r` can participate in a parse of the start symbol.
   public func isAccessible(_ r: Rule) -> Bool {
     std(marpa_g_rule_is_accessible(g, r.rawID)) != 0
@@ -917,7 +926,7 @@ extension Grammar {
     }
   }
 
-  var events: Events {
+  public var events: Events {
     return Events(g: self)
   }
 }

@@ -3,44 +3,21 @@ import Marpa
 
 /// Test case mirroring nits.c from the libMarpa repo.
 final class Nits: XCTestCase {
-  struct NitsGrammar {
-    let g = Marpa.Grammar()
-    let top, a1, a2, b1, b2, c1, c2: Symbol
-    let top1, top2: Rule
-    
-    init() {
-      top = g.makeNonterminal()
-      a1 = g.makeNonterminal()
-      a2 = g.makeNonterminal()
-      b1 = g.makeNonterminal()
-      b2 = g.makeNonterminal()
-      c1 = g.makeTerminal()
-      c2 = g.makeTerminal()
-      
-      top1 = g.makeRule(lhs: top, rhs: [a1])
-      top2 = g.makeRule(lhs: top, rhs: [a2])
-      _ = g.makeRule(lhs: a1, rhs: [b1])
-      _ = g.makeRule(lhs: a2, rhs: [b2])
-      _ = g.makeRule(lhs: b1, rhs: [c1])
-      _ = g.makeRule(lhs: b2, rhs: [c2])
-    }
-  }
-  
   func test() {
-    let nits = NitsGrammar()
+    let g = TestGrammar()
     // precompute
-    nits.g.startSymbol = nits.top
-    nits.g.precompute()
+    g.g.startSymbol = g.top
+    g.g.precompute()
 
-    var r = Recognizer(nits.g)
+    var r = Recognizer(g.g)
     r.startInput()
-    r.enableExpectedEvent(nits.a2)
+    r.enableExpectedEvent(g.a2)
     r.advanceEarleme()
     XCTAssert(r.isExhausted)
 
-    r = Recognizer(nits.g)
+    r = Recognizer(g.g)
     r.startInput()
-    let err = r.read(nits.c1, value: 1)
+    let err = r.read(g.c1, value: 1)
     XCTAssertNil(err)
     r.advanceEarleme()
     XCTAssert(r.isExhausted)

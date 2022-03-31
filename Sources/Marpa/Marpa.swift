@@ -75,22 +75,22 @@ extension Grammar {
   public typealias Terminal = Symbol
   public typealias Nonterminal = Symbol
 
-  /// Returns a new symbol ID in this grammar.
-  func makeSymbolID(isTerminal: Bool) -> Symbol.ID {
+  /// Returns a new symbol in this grammar.
+  func makeSymbol(isTerminal: Bool) -> Symbol {
     let rawID = marpa_g_symbol_new(g)
     let r = std(rawID)
     _ = std(marpa_g_symbol_is_terminal_set(g, rawID, isTerminal ? 1 : 0))
-    return r
+    return Symbol(id: r)
   }
 
   /// Returns a new terminal symbol in this grammar.
-  func makeTerminal() -> Terminal {
-    Terminal(id: makeSymbolID(isTerminal: true))
+  public func makeTerminal() -> Terminal {
+    makeSymbol(isTerminal: true)
   }
 
   /// Returns a new terminal symbol in this grammar.
-  func makeNonterminal() -> Nonterminal {
-    Nonterminal(id: makeSymbolID(isTerminal: false))
+  public func makeNonterminal() -> Nonterminal {
+    makeSymbol(isTerminal: false)
   }
 
   /// Returns the start symbol, or `nil` if none has been set.
@@ -192,9 +192,9 @@ extension Grammar {
 
   /// Returns a new rule in `self` reducing the symbols in `rhs` to `lhs`.
   public func makeRule<RHS: Collection>(lhs: Nonterminal, rhs: RHS) -> Rule
-    where RHS.Element == Symbol.ID
+    where RHS.Element == Symbol
   {
-    var rhsIDs = Array(rhs.lazy.map { Marpa_Symbol_ID(truncatingIfNeeded: $0) })
+    var rhsIDs = rhs.map(\.rawID)
     return Rule(
       id: std(marpa_g_rule_new(g, lhs.rawID, &rhsIDs, Int32(rhsIDs.count))))
   }
@@ -501,7 +501,7 @@ public final class Recognizer {
   /// The first Earley set, the one at earleme 0, will be completed during this
   /// call, so events may be generated. For details, see the documentation of
   /// `closeCurrentEarleme`.
-  func startInput() {
+  public func startInput() {
     _ = std(marpa_r_start_input(r))
   }
 
@@ -512,7 +512,7 @@ public final class Recognizer {
   /// - Parameter value: a value passed through to the evaluator.
   ///
   /// - Precondition: `value != 0`
-  func read(
+  public func read(
     _ s: Grammar.Nonterminal, lengthInEarlemes: Int32 = 1, value: Int32 = 1
   ) -> Int32? {
     let err = marpa_r_alternative(r, s.rawID, value, lengthInEarlemes)
@@ -526,41 +526,44 @@ public final class Recognizer {
   }
 
   // Advances the current earleme by 1.
-  func advanceEarleme() {
-    _ = std(marpa_r_earleme_complete(r))
+  public func advanceEarleme() {
+    let e = marpa_r_earleme_complete(r)
+    if g.err != MARPA_ERR_PARSE_EXHAUSTED {
+      _ = std(e)
+    }
   }
 
   /// The current earleme, or `nil` if `startInput` has not yet been called.
-  var currentEarleme: Earleme? {
+  public var currentEarleme: Earleme? {
     g.stdOpt(marpa_r_current_earleme(r)).map { .init(id: $0) }
   }
 
   /// Returns the Earleme corresponding to `s`.
   ///
   /// - Precondition: `s` is a valid earley set in `self`.
-  func earleme(_ s: EarleySet) -> Earleme {
+  public func earleme(_ s: EarleySet) -> Earleme {
     Earleme(id: std(marpa_r_earleme(r, s.rawID)))
   }
   
   /// Returns the value associated with the given Earley set.
-  func value(_ s: EarleySet) -> EarleySet.Value {
+  public func value(_ s: EarleySet) -> EarleySet.Value {
     var result: EarleySet.Value = (0, nil)
     _ = std(marpa_r_earley_set_values(r, s.rawID, &result.0, &result.1))
     return result
   }
 
   /// Returns the value associated with the given Earley set.
-  func setValueOfLatestEarleySet(_ v: EarleySet.Value) {
+  public func setValueOfLatestEarleySet(_ v: EarleySet.Value) {
     _ = std(marpa_r_latest_earley_set_values_set(r, v.0, v.1))
   }
 
   /// The furthest earleme.
-  var furthestEarleme: Earleme {
+  public var furthestEarleme: Earleme {
     .init(id: marpa_r_furthest_earleme(r))
   }
 
   /// The latest earley set.
-  var latestEarleySet: EarleySet {
+  public var latestEarleySet: EarleySet {
     .init(id: std(marpa_r_latest_earley_set(r)))
   }
 }
@@ -611,7 +614,7 @@ extension Recognizer {
   }
 
   /// True iff `self` cannot accept any more input.
-  var isExhausted: Bool {
+  public var isExhausted: Bool {
     marpa_r_is_exhausted(r) != 0
   }
 
@@ -846,6 +849,11 @@ public final class Order: Sequence {
     _ = g.std(marpa_o_rank(o))
   }
 
+  /// True iff self was initialized with `highRankOnly: true`.
+  public var highRankOnly: Bool {
+    g.std(marpa_o_high_rank_only(o)) != 0
+  }
+  
   /// True iff the parse set was ambiguous.
   public var isAmbiguous: Bool {
     g.std(marpa_o_ambiguity_metric(o)) > 1

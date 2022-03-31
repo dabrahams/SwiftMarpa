@@ -40,72 +40,33 @@ final class Trivial1: XCTestCase {
     XCTAssert(g.isNullable(a1))
     XCTAssert(g.isNulling(a1))
     XCTAssert(g.isProductive(top))
-/*    
-  API_STD_TEST1(defaults, 1, MARPA_ERR_NONE,
-      marpa_g_symbol_is_start, g, S_top);
 
-  API_STD_TEST1(defaults, 0, MARPA_ERR_NONE, marpa_g_symbol_is_terminal, g, S_top);
+    XCTAssertFalse(g.isTerminal(top))
+    
+    /* Rules */
+    XCTAssert(g.isAccessible(top1))
+    XCTAssert(g.isNullable(top2))
+    XCTAssert(g.isNulling(top2))
+    XCTAssertFalse(g.isLoop(c2_1))
+    
+    XCTAssertEqual(g.rhsCount(top1), 1)
+    XCTAssertEqual(g.rhs(top1).count, 1)
+    
+    XCTAssertEqual(g.rhsCount(c2_1), 0)
+    XCTAssertEqual(g.rhs(c2_1).count, 0)
+    
+    XCTAssert(g.isProductive(c2_1))
+    XCTAssertEqual(g.lhs(top1), top)
 
-  /* terminal and start symbols can't be set on precomputed grammar */
-  API_STD_TEST2(defaults, -2, MARPA_ERR_PRECOMPUTED, marpa_g_symbol_is_terminal_set, g, S_top, 0);
+    XCTAssert(g.rhs(top1).elementsEqual([a1]))
+    XCTAssert(g.rhs(top2).elementsEqual([a2]))
 
-  API_STD_TEST1(defaults, -2, MARPA_ERR_PRECOMPUTED, marpa_g_start_symbol_set, g, S_top);
-
-  /* Rules */
-  API_STD_TEST0(this_test, R_C2_3, MARPA_ERR_NONE, marpa_g_highest_rule_id, g);
-
-  API_STD_TEST1(defaults, 1, MARPA_ERR_NONE, marpa_g_rule_is_accessible, g, R_top_1);
-  API_STD_TEST1(defaults, 1, MARPA_ERR_NONE, marpa_g_rule_is_nullable, g, R_top_2);
-  API_STD_TEST1(defaults, 1, MARPA_ERR_NONE, marpa_g_rule_is_nulling, g, R_top_2);
-  API_STD_TEST1(defaults, 0, MARPA_ERR_NONE, marpa_g_rule_is_loop, g, R_C2_3);
-  API_STD_TEST1(defaults, 1, MARPA_ERR_NONE, marpa_g_rule_is_productive, g, R_C2_3);
-  API_STD_TEST1(defaults, 1, MARPA_ERR_NONE, marpa_g_rule_length, g, R_top_1);
-  API_STD_TEST1(defaults, 0, MARPA_ERR_NONE, marpa_g_rule_length, g, R_C2_3);
-  API_STD_TEST1(defaults, S_top, MARPA_ERR_NONE, marpa_g_rule_lhs, g, R_top_1);
-
-  {
-    API_STD_TEST2(defaults, S_A1, MARPA_ERR_NONE, marpa_g_rule_rhs, g, R_top_1, 0);
-    API_STD_TEST2(defaults, S_A2, MARPA_ERR_NONE, marpa_g_rule_rhs, g, R_top_2, 0);
-
-    int ix_out_of_bounds = 25;
-    API_STD_TEST2(defaults, -2, MARPA_ERR_RHS_IX_OOB, marpa_g_rule_rhs, g, R_top_2, ix_out_of_bounds);
-
-    int ix_negative = -1;
-    API_STD_TEST2(defaults, -2, MARPA_ERR_RHS_IX_NEGATIVE, marpa_g_rule_rhs, g, R_top_2, ix_negative);
-  }
-
-  /* invalid/no such rule id error handling */
-  /* Rule accessor methods */
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_rule_is_accessible, g, R_invalid);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_rule_is_loop, g, R_invalid);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_rule_is_productive, g, R_invalid);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_rule_is_nullable, g, R_invalid);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_rule_is_nulling, g, R_invalid);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_rule_length, g, R_invalid);
-  API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_RULE_ID, marpa_g_rule_lhs, g, R_invalid);
-
-  /* Rule accessor methods */
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_rule_is_accessible, g, R_no_such);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_rule_is_loop, g, R_no_such);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_rule_is_productive, g, R_no_such);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_rule_is_nullable, g, R_no_such);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_rule_is_nulling, g, R_no_such);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_rule_length, g, R_no_such);
-  API_STD_TEST1(defaults, -1, MARPA_ERR_NO_SUCH_RULE_ID, marpa_g_rule_lhs, g, R_no_such);
+    XCTAssertFalse(g.isProperSeparation(top1))
+    XCTAssertFalse(g.isCountedInSequence(top))
+    /*    
 
   /* Sequences */
-  /* try to add a nulling sequence, and make sure that it fails with an appropriate
-     error code -- http://irclog.perlgeek.de/marpa/2015-02-13#i_10111831  */
 
-  /* recreate the grammar */
-  marpa_g_unref(g);
-  g = marpa_g_trivial_new(&marpa_configuration);
-
-  /* try to add a nulling sequence */
-  API_STD_TEST5(defaults, -2, MARPA_ERR_SEQUENCE_LHS_NOT_UNIQUE,
-    marpa_g_sequence_new, g, S_top, S_B1, S_B2, 0, MARPA_PROPER_SEPARATION);
-
-  /* test error codes of other sequence methods */
   /* non-sequence rule id */
   API_STD_TEST1(defaults, 0, MARPA_ERR_NONE, marpa_g_rule_is_proper_separation, g, R_top_1);
   API_STD_TEST1(defaults, -1, MARPA_ERR_NOT_A_SEQUENCE, marpa_g_sequence_min, g, R_top_1);

@@ -93,6 +93,11 @@ extension Grammar {
     makeSymbol(isTerminal: false)
   }
 
+  /// Returns true iff `s` is a terminal symbol.
+  public func isTerminal(_ s: Symbol) -> Bool {
+    std(marpa_g_symbol_is_terminal(g, s.rawID)) != 0
+  }
+
   /// Returns the start symbol, or `nil` if none has been set.
   public var startSymbol: Nonterminal? {
     get {

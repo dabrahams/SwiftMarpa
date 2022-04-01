@@ -89,76 +89,40 @@ final class Trivial1: XCTestCase {
 
   func test3() {
   
-    /*    
     let g0 = TestGrammar()
     let g = g0.g
     let (top, a1, a2, b1, b2, c1, c2)
       = (g0.top, g0.a1, g0.a2, g0.b1, g0.b2, g0.c1, g0.c2)
     let (top1, top2, c2_1) = (g0.top1, g0.top2, g0.c2_1!)
 
+    /* completion */
+    let completed = b1
+    g.canTriggerCompletionEvent[completed] = false
+    XCTAssertFalse(g.canTriggerCompletionEvent[completed])
+    g.canTriggerCompletionEvent[completed] = true
+    XCTAssert(g.canTriggerCompletionEvent[completed])
+    g.disableCompletionEvent(completed)
+    g.enableCompletionEvent(completed)
 
 
-  /* Events */
-  /* test that attempts to create events, other than nulled events,
-     results in a reasonable error -- http://irclog.perlgeek.de/marpa/2015-02-13#i_10111838 */
-  int reactivate;
-  int value;
-  Marpa_Symbol_ID S_predicted, S_completed;
+    /* prediction */
+    let predicted = a1
+    g.canTriggerPredictionEvent[predicted] = false
+    XCTAssertFalse(g.canTriggerPredictionEvent[predicted])
+    g.canTriggerPredictionEvent[predicted] = true
+    XCTAssert(g.canTriggerPredictionEvent[predicted])
+    g.disablePredictionEvent(predicted)
+    g.enablePredictionEvent(predicted)
 
-  /* completion */
-  S_completed = S_B1;
+    /* completion on predicted symbol */
+    g.canTriggerCompletionEvent[predicted] = true
+    XCTAssert(g.canTriggerCompletionEvent[predicted])
+    
+    /* prediction on completed symbol */
+    g.canTriggerPredictionEvent[completed] = true
+    XCTAssert(g.canTriggerPredictionEvent[completed])
 
-  value = 0;
-  API_STD_TEST2(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_completion_event_set, g, S_completed, value);
-  API_STD_TEST1(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_completion_event, g, S_completed);
-
-  value = 1;
-  API_STD_TEST2(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_completion_event_set, g, S_completed, value);
-  API_STD_TEST1(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_completion_event, g, S_completed);
-
-  reactivate = 0;
-  API_STD_TEST2(defaults, reactivate, MARPA_ERR_NONE,
-     marpa_g_completion_symbol_activate, g, S_completed, reactivate);
-
-  reactivate = 1;
-  API_STD_TEST2(defaults, reactivate, MARPA_ERR_NONE,
-     marpa_g_completion_symbol_activate, g, S_completed, reactivate);
-
-  /* prediction */
-  S_predicted = S_A1;
-
-  value = 0;
-  API_STD_TEST2(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_prediction_event_set, g, S_predicted, value);
-  API_STD_TEST1(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_prediction_event, g, S_predicted);
-
-  value = 1;
-  API_STD_TEST2(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_prediction_event_set, g, S_predicted, value);
-  API_STD_TEST1(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_prediction_event, g, S_predicted);
-
-  reactivate = 0;
-  API_STD_TEST2(defaults, reactivate, MARPA_ERR_NONE,
-     marpa_g_prediction_symbol_activate, g, S_predicted, reactivate);
-
-  reactivate = 1;
-  API_STD_TEST2(defaults, reactivate, MARPA_ERR_NONE,
-     marpa_g_completion_symbol_activate, g, S_predicted, reactivate);
-
-  /* completion on predicted symbol */
-  value = 1;
-  API_STD_TEST2(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_completion_event_set, g, S_predicted, value);
-  API_STD_TEST1(defaults, value, MARPA_ERR_NONE,
-    marpa_g_symbol_is_completion_event, g, S_predicted);
-
-  /* prediction on completed symbol */
+    /*
   value = 1;
   API_STD_TEST2(defaults, value, MARPA_ERR_NONE,
     marpa_g_symbol_is_prediction_event_set, g, S_completed, value);

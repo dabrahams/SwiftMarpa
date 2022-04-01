@@ -535,14 +535,14 @@ public final class Recognizer {
   }
   
   /// Returns the value associated with the given Earley set.
-  public func value(_ s: EarleySet) -> EarleySet.Value {
+  public func value(for s: EarleySet) -> EarleySet.Value {
     var result: EarleySet.Value = (0, nil)
     _ = std(marpa_r_earley_set_values(r, s.rawID, &result.0, &result.1))
     return result
   }
 
   /// Returns the value associated with the given Earley set.
-  public func setValueOfLatestEarleySet(_ v: EarleySet.Value) {
+  public func setValueForLatestEarleySet(_ v: EarleySet.Value) {
     _ = std(marpa_r_latest_earley_set_values_set(r, v.0, v.1))
   }
 
@@ -858,7 +858,7 @@ public final class Order: Sequence {
   }
 }
 
-public enum Event {
+public enum Event: Hashable {
   case countedNullable(Symbol),
        earleyItemThresholdExceeded(earleyItemCount: Int32),
        parseExhausted,

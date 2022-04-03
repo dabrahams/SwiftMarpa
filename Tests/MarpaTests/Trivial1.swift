@@ -124,269 +124,105 @@ final class Trivial1: XCTestCase {
     /* precomputation */
     g.precompute()
 
-  /* Recognizer Methods */
-  do {
-    let r = Recognizer(g);
-    r.startInput()
     
-    /* start the recce */
-    // The below recce tests are at earleme 0
-
-    /* event loop -- just count events so far -- there must be no event except exhausted */
-    XCTAssert(g.events.elementsEqual([.parseExhausted]))
-    
-    // at earleme 0
-    XCTAssert(r.isExhausted)
-
-     /* Location Accessors */
+    /* Recognizer Methods */
     do {
-      /* the below 2 always succeed */
-      XCTAssertEqual(r.currentEarleme?.id, 0)
-      XCTAssertEqual(r.furthestEarleme, r.currentEarleme)
+      let r = Recognizer(g);
+      r.startInput()
       
-      XCTAssertEqual(r.latestEarleySet.id, r.furthestEarleme.id)
+      /* start the recce */
+      // The below recce tests are at earleme 0
 
-      XCTAssertEqual(r.earleme(r.latestEarleySet), r.currentEarleme)
-
-      r.setValueForLatestEarleySet((-2, nil))
+      /* event loop -- just count events so far -- there must be no event except exhausted */
+      XCTAssert(g.events.elementsEqual([.parseExhausted]))
       
-      var addressable = 0
-      withUnsafeMutablePointer(to: &addressable) { address in 
-        r.setValueForLatestEarleySet((42, .init(address)))
-        XCTAssert(r.value(for: r.latestEarleySet) == (42, .init(address)))
+      // at earleme 0
+      XCTAssert(r.isExhausted)
+
+      /* Location Accessors */
+      do {
+        /* the below 2 always succeed */
+        XCTAssertEqual(r.currentEarleme?.id, 0)
+        XCTAssertEqual(r.furthestEarleme, r.currentEarleme)
+        
+        XCTAssertEqual(r.latestEarleySet.id, r.furthestEarleme.id)
+
+        XCTAssertEqual(r.earleme(r.latestEarleySet), r.currentEarleme)
+
+        r.setValueForLatestEarleySet((-2, nil))
+        
+        var addressable = 0
+        withUnsafeMutablePointer(to: &addressable) { address in 
+          r.setValueForLatestEarleySet((42, .init(address)))
+          XCTAssert(r.value(for: r.latestEarleySet) == (42, .init(address)))
+        }
       }
-    }
-/*
-    /* Other parse status methods */
-    {
-      int boolean = 0;
-      API_STD_TEST2(defaults, boolean, MARPA_ERR_NONE,
-         marpa_r_prediction_symbol_activate, r, S_predicted, boolean);
-      API_STD_TEST2(defaults, -2, MARPA_ERR_INVALID_SYMBOL_ID,
-         marpa_r_prediction_symbol_activate, r, S_invalid, boolean);
-      API_STD_TEST2(defaults, -1, MARPA_ERR_NO_SUCH_SYMBOL_ID,
-         marpa_r_prediction_symbol_activate, r, S_no_such, boolean);
-
-      reactivate = 1;
-      API_STD_TEST2(defaults, reactivate, MARPA_ERR_NONE,
-         marpa_r_completion_symbol_activate, r, S_completed, reactivate);
-      API_STD_TEST2(defaults, -2, MARPA_ERR_INVALID_SYMBOL_ID,
-         marpa_r_completion_symbol_activate, r, S_invalid, reactivate);
-      API_STD_TEST2(defaults, -1, MARPA_ERR_NO_SUCH_SYMBOL_ID,
-         marpa_r_completion_symbol_activate, r, S_no_such, reactivate);
-
-      boolean = 1;
-      Marpa_Symbol_ID S_nulled = S_C1;
-      API_STD_TEST2(defaults, boolean, MARPA_ERR_NONE,
-         marpa_r_nulled_symbol_activate, r, S_nulled, boolean);
-      API_STD_TEST2(defaults, -2, MARPA_ERR_INVALID_SYMBOL_ID,
-         marpa_r_nulled_symbol_activate, r, S_invalid, boolean);
-      API_STD_TEST2(defaults, -1, MARPA_ERR_NO_SUCH_SYMBOL_ID,
-         marpa_r_nulled_symbol_activate, r, S_no_such, boolean);
-
-      int threshold = 1;
-      API_STD_TEST1(defaults, threshold, MARPA_ERR_NONE,
-	marpa_r_earley_item_warning_threshold_set, r, threshold);
-
-      API_STD_TEST0(defaults, threshold, MARPA_ERR_NONE, marpa_r_earley_item_warning_threshold, r);
-
-      Marpa_Symbol_ID S_expected = S_C1;
-      value = 1;
-      API_STD_TEST2(defaults, -2, MARPA_ERR_SYMBOL_IS_NULLING, marpa_r_expected_symbol_event_set, r, S_B1, value);
-
+      
+      let earleme0 = r.currentEarleme
+      XCTAssertEqual(earleme0?.id, 0)
+      let earleySet0 = r.latestEarleySet
+      XCTAssertEqual(earleySet0.id, 0)
+      
+      /* Other parse status methods */
+      do 
       {
-	Marpa_Symbol_ID buffer[42];
-	API_STD_TEST1(defaults, 0, MARPA_ERR_NONE, marpa_r_terminals_expected, r, buffer);
+        r.disablePredictionEvent(predicted)
+        r.enableCompletionEvent(completed)
+        let nulled = c1
+        r.enableNulledEvent(nulled)
+
+        r.earleyItemWarningThreshold = 1
+        XCTAssertEqual(r.earleyItemWarningThreshold, 1)
+
+        let expected = c1
+        XCTAssertEqual(r.expectedTerminals.count, 0)
+        XCTAssertFalse(r.expects(c1))
+
       }
 
-      API_STD_TEST1(defaults, 0, MARPA_ERR_NONE,
-	marpa_r_terminal_is_expected, r, S_C1);
-      API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_SYMBOL_ID,
-	marpa_r_terminal_is_expected, r, S_invalid);
-      API_STD_TEST1(defaults, -2, MARPA_ERR_NO_SUCH_SYMBOL_ID,
-	marpa_r_terminal_is_expected, r, S_no_such);
-
-    } /* Other parse status methods */
-
-    /* Progress reports */
-    {
-      API_STD_TEST0(defaults, -2, MARPA_ERR_PROGRESS_REPORT_NOT_STARTED,
-          marpa_r_progress_report_reset, r);
-
-      API_STD_TEST0(defaults, -2, MARPA_ERR_PROGRESS_REPORT_NOT_STARTED,
-          marpa_r_progress_report_finish, r);
-
-      {
-	int set_id;
-	Marpa_Earley_Set_ID origin;
-	API_STD_TEST2(defaults, -2, MARPA_ERR_PROGRESS_REPORT_NOT_STARTED,
-	  marpa_r_progress_item, r, &set_id, &origin);
+      /* Progress reports */
+      do {
+        XCTAssertNil(r.progress(at: r.latestEarleySet).next())
       }
 
-
-      /* start report at bad locations */
-      Marpa_Earley_Set_ID ys_id_negative = -1;
-      API_STD_TEST1(defaults, -2, MARPA_ERR_INVALID_LOCATION,
-          marpa_r_progress_report_start, r, ys_id_negative);
-
-      Marpa_Earley_Set_ID ys_id_not_existing = 1;
-      API_STD_TEST1(defaults, -2, MARPA_ERR_NO_EARLEY_SET_AT_LOCATION,
-          marpa_r_progress_report_start, r, ys_id_not_existing);
-
-      /* start report at earleme 0 */
-      Marpa_Earley_Set_ID earleme_0 = 0;
-      this_test.msg = "no items at earleme 0";
-      API_STD_TEST1(this_test, 0, MARPA_ERR_NONE,
-          marpa_r_progress_report_start, r, earleme_0);
-
-      {
-	int set_id;
-	Marpa_Earley_Set_ID origin;
-	API_STD_TEST2(defaults, -1, MARPA_ERR_PROGRESS_REPORT_EXHAUSTED,
-	  marpa_r_progress_item, r, &set_id, &origin);
-      }
-
-
-      int non_negative_value = 1;
-      API_STD_TEST0(this_test, non_negative_value, MARPA_ERR_NONE,
-          marpa_r_progress_report_reset, r);
-
-      this_test.msg = "at earleme 0";
-      API_STD_TEST0(this_test, non_negative_value, MARPA_ERR_NONE,
-          marpa_r_progress_report_finish, r);
-    }
-
-    /* Bocage, Order, Tree, Value */
-    {
-      /* Bocage */
-      Marpa_Earley_Set_ID ys_invalid = -2;
-      API_PTR_TEST1(defaults, MARPA_ERR_INVALID_LOCATION,
-          marpa_b_new, r, ys_invalid);
-
-      Marpa_Earley_Set_ID ys_non_existing = 1;
-      API_PTR_TEST1(defaults, MARPA_ERR_NO_PARSE,
-          marpa_b_new, r, ys_non_existing);
-
-      Marpa_Earley_Set_ID ys_at_current_earleme = -1;
-      Marpa_Bocage b = marpa_b_new(r, ys_at_current_earleme);
-      if (!b)
-        fail("marpa_b_new", g);
-      else
-        ok(1, "marpa_b_new(): parse at current earleme of trivial parse");
-
-      marpa_b_unref(b);
-
-      b = marpa_b_new(r, 0);
-
-      if (!b)
-        fail("marpa_b_new", g);
-      else
-        ok(1, "marpa_b_new(): null parse at earleme 0");
-
-      API_STD_TEST0(defaults, 1, MARPA_ERR_NONE,
-	  marpa_b_ambiguity_metric, b);
-      API_STD_TEST0(defaults, 1, MARPA_ERR_NONE,
-	  marpa_b_is_null, b);
-
-      /* Order */
-      Marpa_Order o = marpa_o_new (b);
-
-      if (!o)
-        fail("marpa_o_new", g);
-      else
-        ok(1, "marpa_o_new() at earleme 0");
-
-      int flag = 1;
-      API_STD_TEST1(defaults, flag, MARPA_ERR_NONE,
-	  marpa_o_high_rank_only_set, o, flag);
-      API_STD_TEST0(defaults, flag, MARPA_ERR_NONE,
-	  marpa_o_high_rank_only, o);
-
-      API_STD_TEST0(defaults, 1, MARPA_ERR_NONE,
-	  marpa_o_ambiguity_metric, o);
-      API_STD_TEST0(defaults, 1, MARPA_ERR_NONE,
-	  marpa_o_is_null, o);
-
-      API_STD_TEST1(defaults, -2, MARPA_ERR_ORDER_FROZEN,
-	  marpa_o_high_rank_only_set, o, flag);
-      API_STD_TEST0(defaults, flag, MARPA_ERR_NONE,
-	  marpa_o_high_rank_only, o);
-
-      /* Tree */
-      Marpa_Tree t;
-
-      t = marpa_t_new (o);
-      if (!t)
-        fail("marpa_t_new", g);
-      else
-        ok(1, "marpa_t_new() at earleme 0");
-
-      this_test.msg = "before the first parse tree";
-      API_STD_TEST0(this_test, 0, MARPA_ERR_NONE, marpa_t_parse_count, t);
-      API_STD_TEST0(defaults, 0, MARPA_ERR_NONE, marpa_t_next, t);
-
-      /* Value */
-      Marpa_Value v = marpa_v_new(t);
-      if (!t)
-        fail("marpa_v_new", g);
-      else
-        ok(1, "marpa_v_new() at earleme 0");
-
-      int step_inactive_count = 0;
-      int step_initial_count = 0;
-      int step_token_count = 0;
-      int step_rule_count = 0;
-      int step_nulling_symbol_count = 0;
-      while (1)
-      {
-        Marpa_Step_Type step_type = marpa_v_step (v);
-        Marpa_Symbol_ID token;
-
-        if (step_type < 0)
-            fail("marpa_v_step", g);
-
-        if (step_type == MARPA_STEP_INACTIVE)
-        {
-            step_inactive_count++;
-            break;
+      /* Bocage, Order, Tree, Value */
+      do {
+        /* Bocage */
+        do {
+          guard let b = Bocage(r) else {
+            XCTFail("unexpected null Bocage")
+            return
+          }
         }
 
-        switch (step_type)
-        {
-          case MARPA_STEP_INITIAL:
-            step_initial_count++;
-            break;
-          case MARPA_STEP_TOKEN:
-            step_token_count++;
-            break;
-          case MARPA_STEP_RULE:
-            step_rule_count++;
-            break;
-          case MARPA_STEP_NULLING_SYMBOL:
-            step_nulling_symbol_count++;
-            break;
-         }
-      }
-      is_int(1, step_inactive_count, "MARPA_STEP_INACTIVE seen once.");
-      is_int(0, step_initial_count, "MARPA_STEP_INITIAL not seen.");
-      is_int(0, step_token_count, "MARPA_STEP_TOKEN not seen.");
-      is_int(0, step_rule_count, "MARPA_STEP_RULE not seen.");
-      is_int(0, step_nulling_symbol_count, "MARPA_STEP_NULLING_SYMBOL not seen.");
+        guard let b = Bocage(r, endPosition: earleySet0) else {
+          XCTFail("unexpected null Bocage")
+          return
+        }
+        XCTAssertFalse(b.isAmbiguous)
+        XCTAssert(b.isNull)
 
-      API_STD_TEST0(defaults, 1, MARPA_ERR_NONE, marpa_t_parse_count, t);
-      API_STD_TEST0(defaults, -2, MARPA_ERR_TREE_PAUSED, marpa_t_next, t);
+        /* Order */
+        let o = Order(b)
+        XCTAssert(o.containsHighRankTreesOnly)
+        XCTAssertFalse(o.isAmbiguous)
+        XCTAssert(o.isNull)
+        XCTAssert(o.containsHighRankTreesOnly)
+        
+        /* Tree */
+        var t = o.makeIterator()
 
-      marpa_v_unref(v);
+        /* Value */
+        guard var v = t.next() else {
+          XCTFail("Unexpectedly found no evaluation")
+          return
+        }
+        var inactiveCount = 0
 
-      API_STD_TEST0(defaults, 1, MARPA_ERR_NONE, marpa_t_parse_count, t);
-      API_STD_TEST0(defaults, -1, MARPA_ERR_TREE_EXHAUSTED, marpa_t_next, t);
-
-    } /* Bocage, Order, Tree, Value */
-
-  } /* recce method tests */
+        XCTAssertNil(v.next())
   
- */
-  }
+      }
+    }
   }
 }
 

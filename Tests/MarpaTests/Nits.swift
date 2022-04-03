@@ -31,7 +31,7 @@ final class Nits: XCTestCase {
 
     let o = Order(b, highRankOnly: true)
     XCTAssertFalse(o.isAmbiguous)
-    XCTAssert(o.highRankOnly)
+    XCTAssert(o.containsHighRankTreesOnly)
   }
 }
 

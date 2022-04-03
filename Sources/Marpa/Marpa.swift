@@ -839,7 +839,7 @@ public final class Order: Sequence {
   }
 
   /// True iff self was initialized with `highRankOnly: true`.
-  public var highRankOnly: Bool {
+  public var containsHighRankTreesOnly: Bool {
     g.std(marpa_o_high_rank_only(o)) != 0
   }
   

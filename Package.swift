@@ -15,7 +15,7 @@ let package = Package(
         // These provide hints for users about what to install.
         providers: [
           .apt(["libmarpa-r2-perl"]),
-          .brew(["libmarpa"]),
+          .brew(["--HEAD libmarpa"]),
           .yum(["perl-Marpa-XS"])
         ])
     ])

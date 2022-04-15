@@ -212,15 +212,21 @@ final class Trivial1: XCTestCase {
         /* Tree */
         var t = o.makeIterator()
 
-        /* Value */
-        guard var v = t.next() else {
-          XCTFail("Unexpectedly found no evaluation")
-          return
-        }
-        var inactiveCount = 0
+        do {
+          /* Value */
+          guard var v = t.next() else {
+            XCTFail("Unexpectedly found no evaluation")
+            return
+          }
 
-        XCTAssertNil(v.next())
-  
+          var inactiveCount = 0
+
+          XCTAssertNil(v.next())
+          XCTAssertNil(v.next())
+        }
+
+        // Tree iterator should be unpaused now.
+        XCTAssertNil(t.next())
       }
     }
   }

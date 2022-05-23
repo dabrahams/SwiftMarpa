@@ -2,98 +2,91 @@ import XCTest
 import Marpa
 
 
-private extension TestGrammar {
-  func isNullable(_ s: Symbol) -> Bool {
-    return [top, a1, a2, b1, b2, c1, c2].contains(s)
+fileprivate class Trivial1Grammar: TestGrammar {
+  func isKnownNullable(_ s: Symbol) -> Bool {
+    return [self.top, self.a1, self.a2, self.b1, self.b2, self.c1, self.c2].contains(s)
   }
 
   init() {
-    self.init(nullableCs: true)
-    g.startSymbol = top
-    XCTAssertEqual(g.startSymbol, top)
+    super.init(nullableCs: true)
+    startSymbol = self.top
+    XCTAssertEqual(startSymbol, self.top)
   }
 }
 
 /// Test case mirroring trivial1.c from the libMarpa repo.
 final class Trivial1: XCTestCase {
   func test1() {
-    let g0 = TestGrammar()
-    g0.g.precompute()
-    let g = g0.g
-    let (top, a1, a2, c2) = (g0.top, g0.a1, g0.a2, g0.c2)
-    let (top1, top2, c2_1) = (g0.top1, g0.top2, g0.c2_1!)
+    let g = Trivial1Grammar()
+    g.precompute()
 
-    XCTAssertEqual(g.symbols.count, Int(c2.id + 1))
-    
+    XCTAssertEqual(g.symbols.count, Int(g.c2.id + 1))
+
     // Before precomputation
-    XCTAssertEqual(g.rules.count, Int(c2_1.id + 1))
-    XCTAssertEqual(g.rhsCount(top1), 1)
-    XCTAssertEqual(g.rhsCount(c2_1), 0)
-    XCTAssertEqual(g.lhs(top1), g0.top)
-    XCTAssert(g.rhs(top1).elementsEqual([a1]))
-    XCTAssert(g.rhs(top2).elementsEqual([a2]))
-    XCTAssert(g.rhs(top2).elementsEqual([a2]))
+    XCTAssertEqual(g.rules.count, Int(g.c2_1.id + 1))
+    XCTAssertEqual(g.rhsCount(g.top1), 1)
+    XCTAssertEqual(g.rhsCount(g.c2_1), 0)
+    XCTAssertEqual(g.lhs(g.top1), g.top)
+    XCTAssert(g.rhs(g.top1).elementsEqual([g.a1]))
+    XCTAssert(g.rhs(g.top2).elementsEqual([g.a2]))
+    XCTAssert(g.rhs(g.top2).elementsEqual([g.a2]))
     
     /* Symbols -- status accessors must succeed on precomputed grammar */
-    XCTAssert(g.isAccessible(c2))
-    XCTAssert(g.isNullable(a1))
-    XCTAssert(g.isNulling(a1))
-    XCTAssert(g.isProductive(top))
+    XCTAssert(g.isAccessible(g.c2))
+    XCTAssert(g.isKnownNullable(g.a1))
+    XCTAssert(g.isNulling(g.a1))
+    XCTAssert(g.isProductive(g.top))
 
-    XCTAssertFalse(g.isTerminal(top))
+    XCTAssertFalse(g.isTerminal(g.top))
     
     /* Rules */
-    XCTAssert(g.isAccessible(top1))
-    XCTAssert(g.isNullable(top2))
-    XCTAssert(g.isNulling(top2))
-    XCTAssertFalse(g.isLoop(c2_1))
+    XCTAssert(g.isAccessible(g.top1))
+    XCTAssert(g.isNullable(g.top2))
+    XCTAssert(g.isNulling(g.top2))
+    XCTAssertFalse(g.isLoop(g.c2_1))
     
-    XCTAssertEqual(g.rhsCount(top1), 1)
-    XCTAssertEqual(g.rhs(top1).count, 1)
+    XCTAssertEqual(g.rhsCount(g.top1), 1)
+    XCTAssertEqual(g.rhs(g.top1).count, 1)
     
-    XCTAssertEqual(g.rhsCount(c2_1), 0)
-    XCTAssertEqual(g.rhs(c2_1).count, 0)
+    XCTAssertEqual(g.rhsCount(g.c2_1), 0)
+    XCTAssertEqual(g.rhs(g.c2_1).count, 0)
     
-    XCTAssert(g.isProductive(c2_1))
-    XCTAssertEqual(g.lhs(top1), top)
+    XCTAssert(g.isProductive(g.c2_1))
+    XCTAssertEqual(g.lhs(g.top1), g.top)
 
-    XCTAssert(g.rhs(top1).elementsEqual([a1]))
-    XCTAssert(g.rhs(top2).elementsEqual([a2]))
+    XCTAssert(g.rhs(g.top1).elementsEqual([g.a1]))
+    XCTAssert(g.rhs(g.top2).elementsEqual([g.a2]))
 
-    XCTAssertFalse(g.isProperSeparation(top1))
-    XCTAssertFalse(g.isCountedInSequence(top))
+    XCTAssertFalse(g.isProperSeparation(g.top1))
+    XCTAssertFalse(g.isCountedInSequence(g.top))
   }
 
   func test2() {
-    let g0 = TestGrammar()
-    let g = g0.g
-    let (top1, top2) = (g0.top1, g0.top2)
-    
-    /* Ranks */
-    g.rank[top1] = -2
-    XCTAssertEqual(g.rank[top1], -2)
-    
-    g.rank[top2] = 2
-    XCTAssertEqual(g.rank[top2], 2)
+    let g = Trivial1Grammar()
 
-    g.nullRanksHigh[top2] = true
-    XCTAssert(g.nullRanksHigh[top2])
+    /* Ranks */
+    g.rank[g.top1] = -2
+    XCTAssertEqual(g.rank[g.top1], -2)
     
-    g0.g.precompute()
+    g.rank[g.top2] = 2
+    XCTAssertEqual(g.rank[g.top2], 2)
+
+    g.nullRanksHigh[g.top2] = true
+    XCTAssert(g.nullRanksHigh[g.top2])
+    
+    g.precompute()
     
     /* getters succeed */
-    XCTAssertEqual(g.rank[top1], -2)
-    XCTAssertEqual(g.rank[top2], 2)
-    XCTAssert(g.nullRanksHigh[top2])
+    XCTAssertEqual(g.rank[g.top1], -2)
+    XCTAssertEqual(g.rank[g.top2], 2)
+    XCTAssert(g.nullRanksHigh[g.top2])
   }
 
   func test3() {
-    let g0 = TestGrammar()
-    let g = g0.g
-    let (a1, b1, c1) = (g0.a1, g0.b1, g0.c1)
+    let g = Trivial1Grammar()
 
     /* completion */
-    let completed = b1
+    let completed: Symbol = g.b1
     g.canTriggerCompletionEvent[completed] = false
     XCTAssertFalse(g.canTriggerCompletionEvent[completed])
     g.canTriggerCompletionEvent[completed] = true
@@ -103,7 +96,7 @@ final class Trivial1: XCTestCase {
 
 
     /* prediction */
-    let predicted = a1
+    let predicted: Symbol = g.a1
     g.canTriggerPredictionEvent[predicted] = false
     XCTAssertFalse(g.canTriggerPredictionEvent[predicted])
     g.canTriggerPredictionEvent[predicted] = true
@@ -166,14 +159,14 @@ final class Trivial1: XCTestCase {
       {
         r.disablePredictionEvent(predicted)
         r.enableCompletionEvent(completed)
-        let nulled = c1
+        let nulled = g.c1
         r.enableNulledEvent(nulled)
 
         r.earleyItemWarningThreshold = 1
         XCTAssertEqual(r.earleyItemWarningThreshold, 1)
 
         XCTAssertEqual(r.expectedTerminals.count, 0)
-        XCTAssertFalse(r.expects(c1))
+        XCTAssertFalse(r.expects(g.c1))
 
       }
 

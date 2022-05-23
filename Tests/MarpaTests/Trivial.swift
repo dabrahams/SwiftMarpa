@@ -2,8 +2,8 @@ import XCTest
 import Marpa
 
 private extension TestGrammar {
-  func isNullable(_ s: Symbol) -> Bool {
-    return [top, a1, a2, b1, b2, c1, c2].contains(s)
+  func knownNullable(_ s: Symbol) -> Bool {
+    return [self.top, self.a1, self.a2, self.b1, self.b2, self.c1, self.c2].contains(s)
   }
 }
 
@@ -11,24 +11,24 @@ private extension TestGrammar {
 final class Trivial: XCTestCase {
   func test() {
     let g = TestGrammar(nullableCs: true)
-    for s in g.g.symbols {
-      g.g.canTriggerNulledEvent[s] = true
+    for s in g.symbols {
+      g.canTriggerNulledEvent[s] = true
     }
-    g.g.startSymbol = g.top
-    g.g.precompute()
+    g.startSymbol = g.top
+    g.precompute()
 
-    let r = Recognizer(g.g)
+    let r = Recognizer(g)
     r.startInput()
     XCTAssert(r.isExhausted)
 
     
     // Inner part
     var nulledEventCount = [Symbol: Int](
-      uniqueKeysWithValues: g.g.symbols.lazy.map { ($0, 0) })
+      uniqueKeysWithValues: g.symbols.lazy.map { ($0, 0) })
     
     var exhaustionEventCount = 0
-    XCTAssertEqual(g.g.events.count, 8)
-    for e in g.g.events {
+    XCTAssertEqual(g.events.count, 8)
+    for e in g.events {
       switch e {
       case .nulled(let s): nulledEventCount[s]! += 1
       case .parseExhausted: exhaustionEventCount += 1
@@ -37,8 +37,8 @@ final class Trivial: XCTestCase {
     }
     XCTAssertEqual(exhaustionEventCount, 1)
 
-    for s in g.g.symbols {
-      XCTAssertEqual(nulledEventCount[s], g.isNullable(s) ? 1 : 0, "\(s)")
+    for s in g.symbols {
+      XCTAssertEqual(nulledEventCount[s], g.knownNullable(s) ? 1 : 0, "\(s)")
     }
   }
 }

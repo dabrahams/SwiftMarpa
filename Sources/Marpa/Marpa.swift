@@ -7,7 +7,7 @@ let initialConfig: Marpa_Config = {
 }()
 
 /// A language syntax.
-public final class Grammar {
+open class Grammar {
   var g: Marpa_Grammar
 
   /// Creates an empty instance

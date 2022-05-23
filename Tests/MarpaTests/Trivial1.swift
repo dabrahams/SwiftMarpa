@@ -23,10 +23,10 @@ final class Trivial1: XCTestCase {
     let (top, a1, a2, c2) = (g0.top, g0.a1, g0.a2, g0.c2)
     let (top1, top2, c2_1) = (g0.top1, g0.top2, g0.c2_1!)
 
-    XCTAssertEqual(g.allSymbols.count, Int(c2.id + 1))
+    XCTAssertEqual(g.symbols.count, Int(c2.id + 1))
     
     // Before precomputation
-    XCTAssertEqual(g.allRules.count, Int(c2_1.id + 1))
+    XCTAssertEqual(g.rules.count, Int(c2_1.id + 1))
     XCTAssertEqual(g.rhsCount(top1), 1)
     XCTAssertEqual(g.rhsCount(c2_1), 0)
     XCTAssertEqual(g.lhs(top1), g0.top)

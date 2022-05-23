@@ -106,7 +106,7 @@ extension Grammar {
     std(marpa_g_symbol_is_terminal(g, s.rawID)) != 0
   }
 
-  /// Returns the start symbol, or `nil` if none has been set.
+  /// The start symbol, or `nil` if none has been set.
   public var startSymbol: Symbol? {
     get {
       guard let r = stdOpt(marpa_g_start_symbol(g)) else { return nil }
@@ -120,11 +120,11 @@ extension Grammar {
   /// The number of symbols in `self`.
   ///
   /// Symbol IDs are in `0..<symbolCount`.
-  public var symbolCount: Int {
+  internal var symbolCount: Int {
     Int(stdOpt(marpa_g_highest_symbol_id(g)) ?? 0) + 1
   }
 
-  public var allSymbols: LazyMapSequence<Range<Int>, Symbol> {
+  public var symbols: LazyMapSequence<Range<Int>, Symbol> {
     (0..<symbolCount).lazy.map { Symbol(id: .init(truncatingIfNeeded: $0)) }
   }
 
@@ -154,18 +154,19 @@ extension Grammar {
   // int symbol_is_start ( Marpa_Symbol_ID sym_id);
 }
 
-/// Rules
+/// A BNF parse rule.
 public struct Rule: Numbered { public let id: ID }
 
 extension Grammar {
   /// The number of rules in `self`.
   ///
   /// Rule IDs are in `0..<ruleCount`.
-  public var ruleCount: Int {
+  var ruleCount: Int {
     Int(stdOpt(marpa_g_highest_rule_id(g)) ?? 0) + 1
   }
 
-  public var allRules: LazyMapSequence<Range<Int>, Rule> {
+  /// The rules in `self`
+  public var rules: LazyMapSequence<Range<Int>, Rule> {
     (0..<ruleCount).lazy.map { Rule(id: .init(truncatingIfNeeded: $0)) }
   }
 

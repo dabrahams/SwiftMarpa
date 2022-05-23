@@ -11,7 +11,7 @@ private extension TestGrammar {
 final class Trivial: XCTestCase {
   func test() {
     let g = TestGrammar(nullableCs: true)
-    for s in g.g.allSymbols {
+    for s in g.g.symbols {
       g.g.canTriggerNulledEvent[s] = true
     }
     g.g.startSymbol = g.top
@@ -24,7 +24,7 @@ final class Trivial: XCTestCase {
     
     // Inner part
     var nulledEventCount = [Symbol: Int](
-      uniqueKeysWithValues: g.g.allSymbols.lazy.map { ($0, 0) })
+      uniqueKeysWithValues: g.g.symbols.lazy.map { ($0, 0) })
     
     var exhaustionEventCount = 0
     XCTAssertEqual(g.g.events.count, 8)
@@ -37,7 +37,7 @@ final class Trivial: XCTestCase {
     }
     XCTAssertEqual(exhaustionEventCount, 1)
 
-    for s in g.g.allSymbols {
+    for s in g.g.symbols {
       XCTAssertEqual(nulledEventCount[s], g.isNullable(s) ? 1 : 0, "\(s)")
     }
   }

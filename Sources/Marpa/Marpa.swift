@@ -738,7 +738,7 @@ public final class Evaluation: Sequence, IteratorProtocol {
   let v: Marpa_Value
   let g: Grammar
   
-  public enum Step {
+  public enum Step: Hashable {
     case symbol(
            Symbol, lhsAddress: UInt32, tokenValue: Int32?,
            sourceRange: Range<EarleySet>
@@ -761,6 +761,22 @@ public final class Evaluation: Sequence, IteratorProtocol {
       case .symbol(_, _, _, let r), .rule(_, _, let r):
         return r
       }
+    }
+
+    public var symbol: (
+      Symbol, lhsAddress: UInt32, tokenValue: Int32?,
+      sourceRange: Range<EarleySet>)?
+    {
+      if case let .symbol(s, l, t, r) = self { return (s, l, t, r) }
+      return nil
+    }
+
+    public var rule: (
+      Rule, rhsAddresses: ClosedRange<UInt32>,
+      sourceRange: Range<EarleySet>)?
+    {
+      if case let .rule(s, l, r) = self { return (s, l, r) }
+      return nil
     }
   }
 

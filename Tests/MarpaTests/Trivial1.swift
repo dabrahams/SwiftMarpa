@@ -90,9 +90,7 @@ final class Trivial1: XCTestCase {
   func test3() {
     let g0 = TestGrammar()
     let g = g0.g
-    let (top, a1, a2, b1, b2, c1, c2)
-      = (g0.top, g0.a1, g0.a2, g0.b1, g0.b2, g0.c1, g0.c2)
-    let (top1, top2, c2_1) = (g0.top1, g0.top2, g0.c2_1!)
+    let (a1, b1, c1) = (g0.a1, g0.b1, g0.c1)
 
     /* completion */
     let completed = b1
@@ -174,7 +172,6 @@ final class Trivial1: XCTestCase {
         r.earleyItemWarningThreshold = 1
         XCTAssertEqual(r.earleyItemWarningThreshold, 1)
 
-        let expected = c1
         XCTAssertEqual(r.expectedTerminals.count, 0)
         XCTAssertFalse(r.expects(c1))
 
@@ -189,7 +186,7 @@ final class Trivial1: XCTestCase {
       do {
         /* Bocage */
         do {
-          guard let b = Bocage(r) else {
+          guard Bocage(r) != nil else {
             XCTFail("unexpected null Bocage")
             return
           }
@@ -210,19 +207,30 @@ final class Trivial1: XCTestCase {
         XCTAssert(o.containsHighRankTreesOnly)
         
         /* Tree */
-        var t = o.makeIterator()
+        let t = o.makeIterator()
 
         do {
           /* Value */
-          guard var v = t.next() else {
+          guard let v = t.next() else {
             XCTFail("Unexpectedly found no evaluation")
             return
           }
+          guard let step0 = v.next() else {
+            XCTFail("expected step not found")
+            return
+          }
+          guard let s = step0.symbol else {
+            XCTFail("expected symbol but got \(step0)")
+            return
+          }
+          XCTAssertEqual(s.tokenValue, nil, "expected a nulling symbol")
+          XCTAssertEqual(s.lhsAddress, 0)
+          XCTAssertEqual(s.0.id, 0)
+          XCTAssertEqual(s.sourceRange.upperBound.id, 0)
+          XCTAssertEqual(s.sourceRange.lowerBound.id, 0)
 
-          var inactiveCount = 0
-
-          XCTAssertNil(v.next())
-          XCTAssertNil(v.next())
+          XCTAssertEqual(v.next(), nil)
+          XCTAssertEqual(v.next(), nil)
         }
 
         // Tree iterator should be unpaused now.

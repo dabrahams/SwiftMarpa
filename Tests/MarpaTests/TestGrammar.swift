@@ -1,6 +1,5 @@
 import Marpa
 
-//@dynamicMemberLookup
 struct TestGrammar {
   private(set) var g = Marpa.Grammar()
   let top, a1, a2, b1, b2, c1, c2: Symbol
@@ -26,17 +25,4 @@ struct TestGrammar {
     _ = nullableCs ? g.makeRule(lhs: c1, rhs: []) : nil
     c2_1 = nullableCs ? g.makeRule(lhs: c2, rhs: []) : nil
   }
-
-  /*
-  subscript<T>(dynamicMember p: KeyPath<Marpa.Grammar, T>) -> T {
-    get { g[keyPath: p] }
-  }
-  
-  subscript<T>(dynamicMember p: WritableKeyPath<Marpa.Grammar, T>) -> T {
-    get { g[keyPath: p] }
-    set { g[keyPath: p] = newValue }
-  }
-  
-   */
 }
-

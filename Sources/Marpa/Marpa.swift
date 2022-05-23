@@ -6,8 +6,11 @@ let initialConfig: Marpa_Config = {
   return c
 }()
 
+/// A language syntax.
 public final class Grammar {
   var g: Marpa_Grammar
+
+  /// Creates an empty instance
   public init() {
     var c: Marpa_Config = initialConfig
     g = marpa_g_new(&c)
@@ -56,25 +59,30 @@ extension Grammar {
   }
 }
 
+/// Types whose legal values are represented in libMarpa's C API as nonnegative
+/// `int` values.
 public protocol Numbered: Hashable, Comparable {
   typealias ID = UInt32
+
+  /// The underlying numeric value of `self`.
   var id: ID { get }
 }
 
 extension Numbered {
+  /// The C `int` value associated with `self`.
   var rawID: Int32 { .init(truncatingIfNeeded: id) }
+
+  /// Returns `true` iff the `id` of lhs and rhs are in increasing order.
   public static func <(lhs: Self, rhs: Self) -> Bool {
     return lhs.rawID < rhs.rawID
   }
 }
 
+/// A grammar symbol
 public struct Symbol: Numbered { public let id: ID }
 
 /// Symbols
 extension Grammar {
-  public typealias Terminal = Symbol
-  public typealias Nonterminal = Symbol
-
   /// Returns a new symbol in this grammar.
   func makeSymbol(isTerminal: Bool) -> Symbol {
     let rawID = marpa_g_symbol_new(g)
@@ -84,12 +92,12 @@ extension Grammar {
   }
 
   /// Returns a new terminal symbol in this grammar.
-  public func makeTerminal() -> Terminal {
+  public func makeTerminal() -> Symbol {
     makeSymbol(isTerminal: true)
   }
 
   /// Returns a new terminal symbol in this grammar.
-  public func makeNonterminal() -> Nonterminal {
+  public func makeNonterminal() -> Symbol {
     makeSymbol(isTerminal: false)
   }
 
@@ -99,10 +107,10 @@ extension Grammar {
   }
 
   /// Returns the start symbol, or `nil` if none has been set.
-  public var startSymbol: Nonterminal? {
+  public var startSymbol: Symbol? {
     get {
       guard let r = stdOpt(marpa_g_start_symbol(g)) else { return nil }
-      return Nonterminal(id: r)
+      return Symbol(id: r)
     }
     set {
       _ = std(marpa_g_start_symbol_set(g, newValue?.rawID ?? -2))
@@ -200,12 +208,12 @@ extension Grammar {
   }
 
   /// Returns the `r`'s LHS symbol.
-  public func lhs(_ r: Rule) -> Nonterminal {
-    Nonterminal(id: std(marpa_g_rule_lhs(g, r.rawID)))
+  public func lhs(_ r: Rule) -> Symbol {
+    Symbol(id: std(marpa_g_rule_lhs(g, r.rawID)))
   }
 
   /// Returns a new rule in `self` reducing the symbols in `rhs` to `lhs`.
-  public func makeRule<RHS: Collection>(lhs: Nonterminal, rhs: RHS) -> Rule
+  public func makeRule<RHS: Collection>(lhs: Symbol, rhs: RHS) -> Rule
     where RHS.Element == Symbol
   {
     var rhsIDs = rhs.map(\.rawID)
@@ -247,7 +255,7 @@ extension Grammar {
   /// - Note: sequence rules can always be represented by (often less-efficient)
   ///   equivalent combinations of non-sequence rules.
   public func makeSequenceRule(
-    lhs: Nonterminal, rhs: Symbol.ID, nullable: Bool,
+    lhs: Symbol, rhs: Symbol.ID, nullable: Bool,
     separator: Symbol.ID? = nil, trailingSeparatorAllowed: Bool = false
   ) -> Rule {
     Rule(
@@ -502,7 +510,7 @@ public final class Recognizer {
   ///
   /// - Precondition: `value != 0`
   public func read(
-    _ s: Grammar.Nonterminal, lengthInEarlemes: Int32 = 1, value: Int32 = 1
+    _ s: Symbol, lengthInEarlemes: Int32 = 1, value: Int32 = 1
   ) -> Int32? {
     let err = marpa_r_alternative(r, s.rawID, value, lengthInEarlemes)
     if err == MARPA_ERR_NONE { return nil }

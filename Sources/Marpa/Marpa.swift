@@ -170,7 +170,6 @@ extension Grammar {
     (0..<ruleCount).lazy.map { Rule(id: .init(truncatingIfNeeded: $0)) }
   }
 
-  
   /// Returns true iff `r` can participate in a parse of the start symbol.
   public func isAccessible(_ r: Rule) -> Bool {
     std(marpa_g_rule_is_accessible(g, r.rawID)) != 0
@@ -469,13 +468,20 @@ extension Grammar {
   }
 }
 
+/// A set of partial parses.  Also a token boundary.
 public struct EarleySet: Numbered { public let id: ID }
+public typealias TokenBoundary = EarleySet
+
+/// An input position.
 public struct Earleme: Numbered { public let id: ID }
+public typealias InputPosition = Earleme
 
 extension EarleySet {
+  /// User-defined data associated with each Earley set.
   public typealias Value = (Int32, UnsafeMutableRawPointer?)
 }
 
+/// A recognition pass over a given set of tokens, resulting in a `Bocage` (parse forest).
 public final class Recognizer {
   let g: Grammar
   let r: Marpa_Recognizer
@@ -484,7 +490,8 @@ public final class Recognizer {
   func std(_ i: Int32) -> UInt32 {
     g.std(i)
   }
-  
+
+  /// Creates an instance recognizing `g`.
   public init(_ g: Grammar) {
     self.g = g
     r = marpa_r_new(g.g)
@@ -555,12 +562,12 @@ public final class Recognizer {
     _ = std(marpa_r_latest_earley_set_values_set(r, v.0, v.1))
   }
 
-  /// The furthest earleme.
+  /// The maximal end position of any token so far.
   public var furthestEarleme: Earleme {
     .init(id: marpa_r_furthest_earleme(r))
   }
 
-  /// The latest earley set.
+  /// The laset Earley set completed.
   public var latestEarleySet: EarleySet {
     .init(id: std(marpa_r_latest_earley_set(r)))
   }
@@ -658,9 +665,9 @@ extension Recognizer {
 }
 
 extension Recognizer {
-  /// A sequence whose elements describe each rule being recognized at a given
-  /// position, where the rule started, and how many of its RHS symbols have
-  /// been recognized.
+  /// A single-pass sequence whose elements describe each rule being recognized
+  /// at a given position, where the rule started, and how many of its RHS
+  /// symbols have been recognized.
   public final class ProgressReport: Sequence, IteratorProtocol {
     let r: Recognizer
 
@@ -700,6 +707,7 @@ extension Recognizer {
   }
 }
 
+/// The parse forest for a given recognition pass.
 public final class Bocage {
   let b: Marpa_Bocage
   let g: Grammar
@@ -731,6 +739,7 @@ public final class Bocage {
   }
 }
 
+/// Transliterations of macros in the Marpa C API.
 func marpa_v_step_type(_ v: Marpa_Value) -> Int32 { v[0].t_step_type }
 func marpa_v_token(_ v: Marpa_Value) -> Int32 { v[0].t_token_id }
 let marpa_v_symbol = marpa_v_token
@@ -743,28 +752,37 @@ func marpa_v_rule_start_es_id(_ v: Marpa_Value) -> Int32 { v[0].t_rule_start_ys_
 func marpa_v_token_start_es_id(_ v: Marpa_Value) -> Int32 { v[0].t_token_start_ys_id }
 func marpa_v_es_id(_ v: Marpa_Value) -> Int32 { v[0].t_ys_id }
 
+/// A single-pass sequence of bottom-up semantic evaluation steps expressed in
+/// terms of a stack of semantic values.
 public final class Evaluation: Sequence, IteratorProtocol {
   let v: Marpa_Value
   let g: Grammar
-  
-  public enum Step: Hashable {
-    case symbol(
-           Symbol, lhsAddress: UInt32, tokenValue: Int32?,
-           sourceRange: Range<EarleySet>
-         )
-    case rule(
-           Rule,
-           rhsAddresses: ClosedRange<UInt32>,
-           sourceRange: Range<EarleySet>
-         )
 
-    public var lhsAddress: UInt32 {
+  /// A semantic evaluation step.
+  public enum Step: Hashable {
+    /// Instruction to place the semantic value for the given symbol into the
+    /// `output` stack lockation.
+    ///
+    /// - `tokenValue`: if the symbol is a token, the `value` passed to its
+    ///   `Recognizer.read` call, and `nil` otherwise (if
+    ///   `sourceRange.isEmpty`).  - `sourceRange`: the range of token
+    ///   boundaries covered by the recognized symbol.
+    case symbol(Symbol, output: UInt32, tokenValue: Int32?, sourceRange: Range<EarleySet>)
+
+    /// Instruction to replace the first `input` stack location with the
+    /// semantic value of the given rule's LHS as computed from its RHS values
+    /// in the `input` stack locations.
+    case rule(Rule, input: ClosedRange<UInt32>, sourceRange: Range<EarleySet>)
+
+    /// The stack location where the step's result should be stored.
+    public var output: UInt32 {
       switch self {
       case .symbol(_, let r, _, _): return r
       case .rule(_, let r, _): return r.first!
       }
     }
 
+    /// The range of source locations covered by the input being evaluated.
     public var sourceRange: Range<EarleySet> {
       switch self {
       case .symbol(_, _, _, let r), .rule(_, _, let r):
@@ -772,23 +790,22 @@ public final class Evaluation: Sequence, IteratorProtocol {
       }
     }
 
-    public var symbol: (
-      Symbol, lhsAddress: UInt32, tokenValue: Int32?,
-      sourceRange: Range<EarleySet>)?
+    /// The associated values of `self` if it is `.symbol(...)`; nil otherwise.
+    public var symbol: (Symbol, output: UInt32, tokenValue: Int32?, sourceRange: Range<EarleySet>)?
     {
       if case let .symbol(s, l, t, r) = self { return (s, l, t, r) }
       return nil
     }
 
-    public var rule: (
-      Rule, rhsAddresses: ClosedRange<UInt32>,
-      sourceRange: Range<EarleySet>)?
+    /// The associated values of `self` if it is `.rule(...)`; nil otherwise.
+    public var rule: (Rule, input: ClosedRange<UInt32>, sourceRange: Range<EarleySet>)?
     {
       if case let .rule(s, l, r) = self { return (s, l, r) }
       return nil
     }
   }
 
+  /// Returns the next evaluation `Step`, or nil if all steps are exhausted.
   public func next() -> Step? {
     let r = marpa_v_step(v)
     if r == MARPA_STEP_INACTIVE { return nil }
@@ -798,14 +815,14 @@ public final class Evaluation: Sequence, IteratorProtocol {
     case MARPA_STEP_RULE:
       return .rule(
         Rule(id: Rule.ID(marpa_v_rule(v))),
-        rhsAddresses: UInt32(marpa_v_arg_0(v))...UInt32(marpa_v_arg_n(v)),
+        input: UInt32(marpa_v_arg_0(v))...UInt32(marpa_v_arg_n(v)),
         sourceRange:
           EarleySet(id: .init(marpa_v_rule_start_es_id(v)))..<sourceEnd
       )
     case MARPA_STEP_TOKEN, MARPA_STEP_NULLING_SYMBOL:
       return .symbol(
         Symbol(id: Symbol.ID(marpa_v_token(v))),
-        lhsAddress: UInt32(marpa_v_result(v)),
+        output: UInt32(marpa_v_result(v)),
         tokenValue: r == MARPA_STEP_TOKEN ? marpa_v_token_value(v) : nil,
         sourceRange:
           EarleySet(id: .init(marpa_v_token_start_es_id(v)))..<sourceEnd
@@ -814,7 +831,8 @@ public final class Evaluation: Sequence, IteratorProtocol {
       fatal(g.err)
     }
   }
-  
+
+  /// Creates an instance for the given parse tree and grammar.
   init(_ t: Marpa_Tree, _ g: Grammar) {
     v = marpa_v_new(t)
     self.g = g
@@ -825,10 +843,14 @@ public final class Evaluation: Sequence, IteratorProtocol {
   }
 }
 
+/// A sequence of semantic evaluation sequences, each for a different successful
+/// parse in a `Bocage` (forest).
 public final class Order: Sequence {
   let o: Marpa_Order
   let g: Grammar
-  
+
+  /// A traversal over a sequence of semantic evaluation sequences, each for a
+  /// different successful parse in a `Bocage` (forest).
   public final class Iterator: IteratorProtocol {
     let t: Marpa_Tree
     let g: Grammar
@@ -838,7 +860,9 @@ public final class Order: Sequence {
       guard let t = marpa_t_new(o.o) else { fatal(g.err) }
       self.t = t
     }
-    
+
+    /// Returns the evaluation sequence for the next parse tree, or `nil` if
+    /// successful parses are exhausted.
     public func next() -> Evaluation? {
       let e = marpa_t_next(t)
       if e == -1 { return nil }
@@ -851,10 +875,13 @@ public final class Order: Sequence {
     }
   }
 
+  /// Returns a traversal over `self`.
   public func makeIterator() -> Iterator {
     return Iterator(self)
   }
-  
+
+  /// Creates an instance for the highest-ranking successful parses in `b`, or
+  /// iff highRankOnly is `false`, all of the successful parses.
   public init(_ b: Bocage, highRankOnly: Bool = true) {
     g = b.g
     guard let o = marpa_o_new(b.b) else { fatal(g.err) }
@@ -869,6 +896,8 @@ public final class Order: Sequence {
   }
   
   /// True iff the parse set was ambiguous.
+  ///
+  /// - See also: https://github.com/jeffreykegler/libmarpa/issues/112).
   public var isAmbiguous: Bool {
     g.std(marpa_o_ambiguity_metric(o)) > 1
   }
@@ -884,15 +913,36 @@ public final class Order: Sequence {
 }
 
 public enum Event: Hashable {
-  case countedNullable(Symbol),
-       earleyItemThresholdExceeded(earleyItemCount: Int32),
-       parseExhausted,
-       loopRules(count: Int32),
-       nullingTerminal(Symbol),
-       completed(Symbol),
-       expected(Symbol),
-       nulled(Symbol),
-       predicted(Symbol)
+  /// A nullable symbol appears on the right hand side of a sequence rule.
+  ///
+  /// The presence of one or more of these will prevent the grammar from being
+  /// precomputed.
+  case countedNullable(Symbol)
+
+  /// Too many earley items were added: it is very likely that resources consumed
+  /// by the parse will prove excessive.
+  case earleyItemThresholdExceeded(earleyItemCount: Int32)
+
+  /// The parse is complete and no input can be accepted at later token positions.
+  case parseExhausted
+
+  /// The given number of loop rules were detected.
+  case loopRules(count: Int32)
+
+  /// The given symbol is both a terminal and a nulling symbol, which is not allowed.
+  case nullingTerminal(Symbol)
+
+  /// The given symbol was recognized in a partial parse of the input.
+  case completed(Symbol)
+
+  /// The given token is expected next in the input by one of the partial parses.
+  case expected(Symbol)
+
+  /// The given nonterminal was recognized as empty in a partial parse of the input.
+  case nulled(Symbol)
+
+  /// The given nonterminal is expected next in the input by one of the partial parses.
+  case predicted(Symbol)
 }
 
 extension Grammar {

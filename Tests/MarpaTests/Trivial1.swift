@@ -217,7 +217,7 @@ final class Trivial1: XCTestCase {
             return
           }
           XCTAssertEqual(s.tokenValue, nil, "expected a nulling symbol")
-          XCTAssertEqual(s.lhsAddress, 0)
+          XCTAssertEqual(s.output, 0)
           XCTAssertEqual(s.0.id, 0)
           XCTAssertEqual(s.sourceRange.upperBound.id, 0)
           XCTAssertEqual(s.sourceRange.lowerBound.id, 0)

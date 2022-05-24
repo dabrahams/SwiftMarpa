@@ -946,11 +946,16 @@ public enum Event: Hashable {
 }
 
 extension Grammar {
+  /// The events associated with operations on a `Grammar` and its `Recognizer`s.
   public struct Events: RandomAccessCollection {
     let g: Grammar
 
+    /// The position of the first element, or `endIndex` if `self.isEmpty`
     public var startIndex: Int { 0 }
+    /// The position one past the last element.
     public var endIndex: Int { Int(marpa_g_event_count(g.g)) }
+
+    /// Accesses the element at `i`.
     public subscript(i: Int) -> Event {
       var e = Marpa_Event(t_type: 0, t_value: 0)
       if marpa_g_event(g.g, &e, Int32(i)) == -2 {
@@ -981,6 +986,7 @@ extension Grammar {
     }
   }
 
+  /// The events associated with operations on `self` and any `Recognizers` of `self`.
   public var events: Events {
     return Events(g: self)
   }

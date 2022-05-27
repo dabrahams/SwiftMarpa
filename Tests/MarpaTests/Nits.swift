@@ -7,7 +7,7 @@ final class Nits: XCTestCase {
     let g = TestGrammar(nullableCs: false)
     // precompute
     g.startSymbol = g.top
-    g.precompute()
+    XCTAssertNil(g.precompute())
 
     var r = Recognizer(g)
     r.startInput()

@@ -18,7 +18,7 @@ fileprivate class Trivial1Grammar: TestGrammar {
 final class Trivial1: XCTestCase {
   func test1() {
     let g = Trivial1Grammar()
-    g.precompute()
+    XCTAssertNil(g.precompute())
 
     XCTAssertEqual(g.symbols.count, Int(g.c2.id + 1))
 
@@ -74,7 +74,7 @@ final class Trivial1: XCTestCase {
     g.nullRanksHigh[g.top2] = true
     XCTAssert(g.nullRanksHigh[g.top2])
     
-    g.precompute()
+    XCTAssertNil(g.precompute())
     
     /* getters succeed */
     XCTAssertEqual(g.rank[g.top1], -2)
@@ -113,7 +113,7 @@ final class Trivial1: XCTestCase {
     XCTAssert(g.canTriggerPredictionEvent[completed])
 
     /* precomputation */
-    g.precompute()
+    XCTAssertNil(g.precompute())
 
     
     /* Recognizer Methods */

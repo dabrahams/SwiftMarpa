@@ -25,7 +25,7 @@ open class Grammar {
 
 func fatal(_ e: Int32) -> Never {
   fatalError(
-    (recoverableConditions.contains(e) 
+    (Error.allCases.contains { x in x.rawValue == e }
        ? "BUG: unhandled supposedly-recoverable Marpa error "
        : "Marpa error: ")
       + "\(e) \(errorDescription[e] ?? "<unknown>")")
@@ -448,9 +448,11 @@ extension Grammar {
 }
 
 extension Grammar {
-  /// Perform the step necessary to create a recognizer from the grammar.
-  public func precompute() {
-    _ = std(marpa_g_precompute(g))
+  /// Perform the step necessary to create a recognizer from the grammar, returning a
+  /// non-nil Marpa error code if the grammar contains an error.
+  public func precompute() -> Error? {
+    let e = marpa_g_precompute(g)
+    return e != MARPA_ERR_NONE ? Error(rawValue: e) : nil
   }
 
   /// `true` iff `precompute()` has been called.
@@ -519,13 +521,13 @@ public final class Recognizer {
   /// - Precondition: `value != 0`
   public func read(
     _ s: Symbol, lengthInEarlemes: Int32 = 1, value: Int32 = 1
-  ) -> Int32? {
+  ) -> Error? {
     let err = marpa_r_alternative(r, s.rawID, value, lengthInEarlemes)
     if err == MARPA_ERR_NONE { return nil }
     if err == MARPA_ERR_UNEXPECTED_TOKEN_ID
          || err == MARPA_ERR_DUPLICATE_TOKEN
          || err == MARPA_ERR_NO_TOKEN_EXPECTED_HERE
-         || err == MARPA_ERR_INACCESSIBLE_TOKEN { return err }
+         || err == MARPA_ERR_INACCESSIBLE_TOKEN { return Error(rawValue: err) }
     _ = std(err)
     return nil
   }
@@ -1095,24 +1097,24 @@ public let errorDescription: [Int32: StaticString] = [
   MARPA_ERR_NOT_A_SEQUENCE: "Rule is not a sequence"
 ]
 
-let recoverableConditions: Set = [
-  MARPA_ERR_NONE,
-  MARPA_ERR_BOCAGE_ITERATION_EXHAUSTED,
-  MARPA_ERR_GRAMMAR_HAS_CYCLE,
-  MARPA_ERR_INACCESSIBLE_TOKEN,
-  MARPA_ERR_DUPLICATE_RULE,
-  MARPA_ERR_DUPLICATE_TOKEN,
-  MARPA_ERR_INACCESSIBLE_TOKEN,
-  MARPA_ERR_NOT_PRECOMPUTED,
-  MARPA_ERR_NO_PARSE,
-  MARPA_ERR_NO_RULES,
-  MARPA_ERR_NO_START_SYMBOL,
-  MARPA_ERR_NO_TOKEN_EXPECTED_HERE,
-  MARPA_ERR_PARSE_EXHAUSTED,
-  MARPA_ERR_PROGRESS_REPORT_EXHAUSTED,
-  MARPA_ERR_START_NOT_LHS,
-  MARPA_ERR_TREE_EXHAUSTED,
-  MARPA_ERR_UNEXPECTED_TOKEN_ID,
-  MARPA_ERR_UNPRODUCTIVE_START,
-  MARPA_ERR_RECCE_IS_INCONSISTENT,
-]
+public enum Error: Int32, CaseIterable, Swift.Error, CustomStringConvertible {
+  case bocageIterationExhausted = 7      // MARPA_ERR_BOCAGE_ITERATION_EXHAUSTED
+  case grammarHasCycle = 17              // MARPA_ERR_GRAMMAR_HAS_CYCLE
+  case duplicateRule = 11                // MARPA_ERR_DUPLICATE_RULE
+  case duplicateToken = 12               // MARPA_ERR_DUPLICATE_TOKEN
+  case inaccessibleToken = 18            // MARPA_ERR_INACCESSIBLE_TOKEN
+  case notPrecomputed = 34               // MARPA_ERR_NOT_PRECOMPUTED
+  case noParse = 41                      // MARPA_ERR_NO_PARSE
+  case noRules = 42                      // MARPA_ERR_NO_RULES
+  case noStartSymbol = 43                // MARPA_ERR_NO_START_SYMBOL
+  case noTokenExpectedHere = 44          // MARPA_ERR_NO_TOKEN_EXPECTED_HERE
+  case parseExhausted = 53               // MARPA_ERR_PARSE_EXHAUSTED
+  case progressReportExhausted = 58      // MARPA_ERR_PROGRESS_REPORT_EXHAUSTED
+  case startNotLHS = 73                  // MARPA_ERR_START_NOT_LHS
+  case treeExhausted = 79                // MARPA_ERR_TREE_EXHAUSTED
+  case unexpectedToken = 81              // MARPA_ERR_UNEXPECTED_TOKEN_ID
+  case unproductiveStart = 82            // MARPA_ERR_UNPRODUCTIVE_START
+  case recceIsInconsistent = 95          // MARPA_ERR_RECCE_IS_INCONSISTENT
+
+  public var description: String { "\(errorDescription[rawValue]!)" }
+}

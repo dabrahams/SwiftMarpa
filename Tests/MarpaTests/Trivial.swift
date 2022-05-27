@@ -15,7 +15,7 @@ final class Trivial: XCTestCase {
       g.canTriggerNulledEvent[s] = true
     }
     g.startSymbol = g.top
-    g.precompute()
+    XCTAssertNil(g.precompute())
 
     let r = Recognizer(g)
     r.startInput()

@@ -992,7 +992,7 @@ extension Grammar {
   }
 }
 
-let errorDescription: [Int32: StaticString] = [
+public let errorDescription: [Int32: StaticString] = [
   MARPA_ERR_NONE: "No error",
   MARPA_ERR_AHFA_IX_NEGATIVE: "MARPA_ERR_AHFA_IX_NEGATIVE",
   MARPA_ERR_AHFA_IX_OOB: "MARPA_ERR_AHFA_IX_OOB",

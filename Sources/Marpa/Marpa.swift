@@ -451,8 +451,7 @@ extension Grammar {
   /// Perform the step necessary to create a recognizer from the grammar, returning a
   /// non-nil Marpa error code if the grammar contains an error.
   public func precompute() -> Error? {
-    let e = marpa_g_precompute(g)
-    return e != MARPA_ERR_NONE ? Error(rawValue: e) : nil
+    return marpa_g_precompute(g) == -2 ? Error(rawValue: err) : nil
   }
 
   /// `true` iff `precompute()` has been called.

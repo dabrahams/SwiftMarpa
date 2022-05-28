@@ -687,15 +687,16 @@ extension Recognizer {
     public func next() -> (Rule, origin: EarleySet, progress: Int)? {
       var progress: Int32 = 0
       var origin: Int32 = 0
-      let rule = marpa_r_progress_item(r.r, &progress, &origin)
-      if rule == -1 { return nil }
+      let ruleID = marpa_r_progress_item(r.r, &progress, &origin)
+      if ruleID == -1 { return nil }
+      let rule = Rule(id: r.std(ruleID))
       return (
-        Rule(id: r.std(rule)),
+        rule,
         origin: .init(id: UInt32(origin)),
-        progress: Int(progress))
+        progress: progress < 0 ? r.g.rhs(rule).count : Int(progress))
     }
   }
-
+  
   /// Returns a sequence whose elements describe each rule being recognized at
   /// `position`, where the rule started, and how many of its RHS symbols have
   /// been recognized.

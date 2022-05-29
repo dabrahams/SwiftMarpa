@@ -470,11 +470,17 @@ extension Grammar {
 }
 
 /// A set of partial parses.  Also a token boundary.
-public struct EarleySet: Numbered { public let id: ID }
+public struct EarleySet: Numbered {
+  public init(id: ID) { self.id = id }
+  public let id: ID
+}
 public typealias TokenBoundary = EarleySet
 
 /// An input position.
-public struct Earleme: Numbered { public let id: ID }
+public struct Earleme: Numbered {
+  public init(id: ID) { self.id = id }
+  public let id: ID
+}
 public typealias InputPosition = Earleme
 
 extension EarleySet {
@@ -568,7 +574,7 @@ public final class Recognizer {
     .init(id: marpa_r_furthest_earleme(r))
   }
 
-  /// The laset Earley set completed.
+  /// The last Earley set completed.
   public var latestEarleySet: EarleySet {
     .init(id: std(marpa_r_latest_earley_set(r)))
   }

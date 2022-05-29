@@ -11,11 +11,18 @@ final class SwiftMarpaTests: XCTestCase {
     XCTAssertNotNil(g)
   }
 
-  func smoke() {
+  func testSmoke() {
     do {
       let g = Grammar()
       _ = g
     }
+  }
+
+  func testEarleySetAndEarlemeConstruction() {
+    let s = EarleySet(id: 0)
+    XCTAssertEqual(s.id, 0)
+    let t = Earleme(id: 4)
+    XCTAssertEqual(t.id, 4)
   }
 }
 
